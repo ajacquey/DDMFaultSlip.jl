@@ -1,0 +1,3 @@
+[deps]
+DDMFaultSlip = "3c52d001-2359-4feb-abce-7bd6b42a78ca"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
