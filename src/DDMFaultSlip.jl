@@ -4,6 +4,7 @@ using StaticArrays
 using LinearAlgebra
 using Statistics: mean
 using HMatrices
+using TimerOutputs
 
 include("mesh.jl")
 export Point2D, Point3D, Mesh1D, Mesh2D

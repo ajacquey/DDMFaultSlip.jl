@@ -14,11 +14,18 @@ mutable struct DirectDDMSolver{R,T<:Real} <: DDMSolver{T}
         jacobian = assemble_1D_DDM_jacobian(mesh, n_var; order=order, eta=hmat_eta, atol=hmat_atol)
 
         R = typeof(jacobian.Hmat.coltree)
-        return new{R,T}(jacobian, zeros(T, size(jacobian, 1)), zeros(T, size(jacobian, 1)), preconditioner)
+        return new{R,T}(jacobian, zeros(T, size(jacobian, 1)), zeros(T, size(jacobian, 1)), preconditioner, nl_abs_tol, nl_rel_tol, nl_max_it)
     end
 end
 
-mutable struct IterativeDDMSolver{T<:Real} <: DDMSolver{T}
+function linear_solve!(dx::Vector{T}, solver::DirectDDMSolver{R,T}) where {T<:Real}
+    # Not sure how to deal with \ here with the type DDMJacobian...
+    ErrorException("Direct solver is not supported yet! Please use an iterative solver instead.")
+
+    return dx
+end
+
+mutable struct IterativeDDMSolver{R,T<:Real} <: DDMSolver{T}
     jacobian::DDMJacobian{R,T}
     rhs::Vector{T}
     x::Vector{T}
@@ -35,8 +42,22 @@ mutable struct IterativeDDMSolver{T<:Real} <: DDMSolver{T}
         jacobian = assemble_1D_DDM_jacobian(mesh, n_var; order=order, eta=hmat_eta, atol=hmat_atol)
 
         R = typeof(jacobian.Hmat.coltree)
-        return new{R,T}(jacobian, zeros(T, size(jacobian, 1)), zeros(T, size(jacobian, 1)), preconditioner)
+        return new{R,T}(jacobian, zeros(T, size(jacobian, 1)), zeros(T, size(jacobian, 1)), preconditioner, nl_abs_tol, nl_rel_tol, nl_max_it, l_abs_tol, l_rel_tol, l_max_it)
     end
+end
+
+function linear_solve!(dx::Vector{T}, solver::IterativeDDMSolver{R,T}) where {T<:Real}
+    dx, ch = bicgstabl!(dx, solver.jacobian, -solver.rhs; log = true, verbose = false, abstol = solver.l_abs_tol, reltol = solver.l_rel_tol)
+
+    if log
+        if ch.isconverged
+            println("    -> Linear Solve converged after ", ch.iters, " iterations")
+        else                
+            println("    -> Linear Solve did NOT converge after ", ch.iters, " iterations")
+        end
+    end
+
+    return dx
 end
 
 function assemble_1D_DDM_jacobian(mesh::Mesh1D{T}, n_var; order::Int = 0, eta::T=3.0, atol::T=0.0) where {T<:Real}
@@ -49,9 +70,6 @@ function assemble_1D_DDM_jacobian(mesh::Mesh1D{T}, n_var; order::Int = 0, eta::T
     return DDMJacobian(K, n_var; eta=eta, atol=atol)
 end
 
-# function solve!(solver::DirectDDMSolver{R,T}) where {R,T<:Real}
-# end
-
 function solve!(solver::DDMSolver{T}, timer::TimerOutput; log::Bool = true) where {T<:Real}
     ##### Newton loop #####
     # Non-linear iterations
@@ -61,7 +79,7 @@ function solve!(solver::DDMSolver{T}, timer::TimerOutput; log::Bool = true) wher
     dx = zeros(T, length(solver.rhs))
 
     # Initial residual
-    assembleResidualAndJacobian!(solver, solver.problem, timer)
+    # assembleResidualAndJacobian!(solver, solver.problem, timer)
     r = norm(solver.rhs)
     r0 = r
 
@@ -94,23 +112,15 @@ function solve!(solver::DDMSolver{T}, timer::TimerOutput; log::Bool = true) wher
         @timeit timer "Solve" dx = linear_solve!(dx, solver)
         # @timeit timer "Solve" dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log = true, verbose = false, abstol = 1.0e-10, reltol = 1.0e-10)
         # @timeit timer "Solve" dx = jacobi!(dx, solver.mat, -solver.rhs; maxiter = 200)
-        # @timeit timer "Solve" dx = Pardiso.solve(ps, solver.mat, -solver.rhs)
-        if log
-            if ch.isconverged
-                println("    -> Linear Solve converged after ", ch.iters, " iterations")
-            else
-                println("    -> Linear Solve did NOT converge after ", ch.iters, " iterations")
-            end
-        end
 
         # Update solution
         solver.solution .+= dx
 
         # Update problem
-        @timeit timer "Update problem" update!(solver.problem, solver)
+        # @timeit timer "Update problem" update!(solver.problem, solver)
 
         # Update residuals and jacobian
-        assembleResidualAndJacobian!(solver, solver.problem, timer)
+        # assembleResidualAndJacobian!(solver, solver.problem, timer)
         r = norm(solver.rhs)
 
         nl_iter += 1
@@ -120,7 +130,7 @@ function solve!(solver::DDMSolver{T}, timer::TimerOutput; log::Bool = true) wher
     end
 
     # Error if exceeded maximum number of iterations
-    if (nl_iter > solver.nl_max_iters)
+    if (nl_iter > solver.nl_max_it)
         throw(ErrorException("Exceeded the maximum number of nonlinear iterations!"))
     end
 end
