@@ -18,7 +18,7 @@ mutable struct DirectDDMSolver{R,T<:Real} <: DDMSolver{T}
     end
 end
 
-function linear_solve!(dx::Vector{T}, solver::DirectDDMSolver{R,T}) where {T<:Real}
+function linear_solve!(dx::Vector{T}, solver::DirectDDMSolver{R,T}) where {R,T<:Real}
     # Not sure how to deal with \ here with the type DDMJacobian...
     ErrorException("Direct solver is not supported yet! Please use an iterative solver instead.")
 
@@ -46,7 +46,7 @@ mutable struct IterativeDDMSolver{R,T<:Real} <: DDMSolver{T}
     end
 end
 
-function linear_solve!(dx::Vector{T}, solver::IterativeDDMSolver{R,T}) where {T<:Real}
+function linear_solve!(dx::Vector{T}, solver::IterativeDDMSolver{R,T}) where {R,T<:Real}
     dx, ch = bicgstabl!(dx, solver.jacobian, -solver.rhs; log = true, verbose = false, abstol = solver.l_abs_tol, reltol = solver.l_rel_tol)
 
     if log

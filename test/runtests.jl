@@ -2,5 +2,6 @@ using DDMFaultSlip
 using Test
 
 @testset "DDMFaultSlip.jl" begin
-    # Write your tests here.
+    # include("jacobiantest.jl")
+    @test 1 == 1
 end

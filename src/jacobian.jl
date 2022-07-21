@@ -28,12 +28,12 @@ mutable struct DDMJacobian{R, T} <: AbstractMatrix{T}
     end
 end
 
-function Base.size(J::DDMJacobian{R,T}) where {R,T}
+function Base.size(J::DDMJacobian{R,T}) where {R,T<:Real}
     # Size = size of H-matrix times number of variables
     return length(J.jac_loc) .* size(J.Hmat)
 end
 
-function Base.getindex(J::DDMJacobian{R,T}, i::Int, j::Int) where {R,T}
+function Base.getindex(J::DDMJacobian{R,T}, i::Int, j::Int) where {R,T<:Real}
     # Number of variables
     n_var = length(J.jac_loc)
     # Size of H-mat
