@@ -1,55 +1,84 @@
 const Point2D{T<:Real} = SVector{2, T}
 const Point3D{T<:Real} = SVector{3, T}
 
-abstract type Mesh{T<:Real} end
+abstract type DDElem{T<:Real} end
 
 """
-One-dimensional Mesh
+One-dimensional element: Edge
 """
-struct Mesh1D{T<:Real} <: Mesh{T}
-    # List of nodes
+struct DDEdgeElem{T<:Real} <: DDElem{T}
+    " List of nodes"
+    nodes::SVector{2, Point2D{T}}
+    " Centroid coordinates"
+    X::Point2D{T}
+end
+
+"""
+Two-dimensional element: Triangle
+"""
+struct DDTriangleElem{T<:Real} <: DDElem{T}
+    " List of nodes"
+    nodes::SVector{3, Point3D{T}}
+    " Centroid coordinates"
+    X::Point3D{T}
+end
+
+abstract type DDMesh{T<:Real} end
+
+"""
+One-dimensional DDMesh
+"""
+struct DDMesh1D{T<:Real} <: DDMesh{T}
+    " List of nodes"
     nodes::Vector{Point2D{T}}
-    # Elements connection
-    elems::Vector{Vector{Int}}
-    # Constructor
-    function Mesh1D(start_point::SVector{2, T}, end_point::SVector{2, T}, n::Int) where {T<:Real}
+    " List of elems"
+    elems::Vector{DDEdgeElem{T}}
+    " Elements connection"
+    elem2nodes::Vector{SVector{2, Int}}
+    " Constructor"
+    function DDMesh1D(start_point::SVector{2, T}, end_point::SVector{2, T}, n::Int) where {T<:Real}
         # Directional vector
         u = (end_point .- start_point) / n
         # Nodes list
         nodes = [start_point .+ (i - 1) * u for i in 1:n+1]
+        # Elems list
+        elems = [DDEdgeElem(SVector(nodes[i], nodes[i+1]), (nodes[i] + nodes[i+1]) / 2.0) for i in 1:n]
         # Elements connection
-        elems = [[i, i+1] for i in 1:n]
+        elem2nodes = [[i, i+1] for i in 1:n]
 
-        return new{T}(nodes, elems)
+        return new{T}(nodes, elems, elem2nodes)
     end
 end
 
 """
-Custom `show` function for `Mesh1D{T}` that prints some information.
+Custom `show` function for `DDMesh1D{T}` that prints some information.
 """
-function Base.show(io::IO, mesh::Mesh1D{T} where {T<:Real})
-    println("Mesh information:")
+function Base.show(io::IO, mesh::DDMesh1D{T} where {T<:Real})
+    println("DDMesh information:")
     println("   -> dimension: 1")
-    println("   -> n_elems: $(length(mesh.elems))")
-    println("   -> n_nodes: $(length(mesh.nodes))")
+    println("   -> $(length(mesh.elems)) elements")
+    println("   -> $(length(mesh.nodes)) nodes")
 end
 
 """
-Two-dimensional Mesh
+Two-dimensional DDMesh
 """
-struct Mesh2D{T<:Real} <: Mesh{T}
-    # List of nodes
+struct DDMesh2D{T<:Real} <: DDMesh{T}
+    " List of nodes"
     nodes::Vector{Point3D{T}}
-    # Elements connection
-    elems::Vector{Vector{Int}}
-    # Constructor
-    function Mesh2D(T::DataType, file::String)
+    " List of elems"
+    elems::Vector{DDTriangleElem{T}}
+    " Elements connection"
+    elem2nodes::Vector{SVector{3, Int}}
+    " Constructor"
+    function DDMesh2D(T::DataType, file::String)
         # Check if file exists
         @assert isfile(file)
         # Create containers
         nodes = Vector{Point3D{T}}(undef, 0)
         nodes_id = Vector{Int}(undef, 0)
-        elems = Vector{Vector{Int}}(undef, 0)
+        elems = Vector{DDTriangleElem}(undef, 0)
+        elem2nodes = Vector{Vector{Int}}(undef, 0)
         # Open file
         f = open(file, "r")
         # Read file line by line
@@ -95,16 +124,16 @@ struct Mesh2D{T<:Real} <: Mesh{T}
                     elem_info = split(line, " ")
                     n_elems = parse(Int, elem_info[2])
                     # Resize containers and initialize elem 2 node
-                    resize!(elems, n_elems)
-                    for i in 1:length(elems)
-                        elems[i] = Vector{Int}(undef, 0)
+                    resize!(elem2nodes, n_elems)
+                    for i in 1:length(elem2nodes)
+                        elem2nodes[i] = Vector{Int}(undef, 0)
                     end
                     line = strip(readline(f))
                     while ~startswith(line, string("\$End", keyword))
                         # Save node connectivity
                         elem_co = parse.(Int, split(line, " "))
-                        resize!(elems[elem_co[1]], length(elem_co) - 1)
-                        elems[elem_co[1]] = elem_co[2:end]
+                        resize!(elem2nodes[elem_co[1]], length(elem_co) - 1)
+                        elem2nodes[elem_co[1]] = elem_co[2:end]
                         line = strip(readline(f))
                     end
                 else
@@ -115,19 +144,25 @@ struct Mesh2D{T<:Real} <: Mesh{T}
                 end
             end
         end
+        # Build list of elements
+        n_elems = length(elem2nodes)
+        resize!(elems, n_elems)
+        for k in 1:n_elems
+            elems[k] = DDTriangleElem(SVector(nodes[elem2nodes[k][1]], nodes[elem2nodes[k][2]], nodes[elem2nodes[k][3]]), (nodes[elem2nodes[k][1]] + nodes[elem2nodes[k][2]] + nodes[elem2nodes[k][3]]) / 3.0)
+        end
         println()
-        println("-> Done reading a mesh with ", length(nodes), " nodes and ", length(elems), " elements.")
+        println("-> Done reading ", file, " with ", length(nodes), " nodes and ", length(elems), " elements.")
         println()
-        return new{T}(nodes, elems)
+        return new{T}(nodes, elems, elem2nodes)
     end
 end
 
 """
-Custom `show` function for `Mesh2D{T}` that prints some information.
+Custom `show` function for `DDMesh2D{T}` that prints some information.
 """
-function Base.show(io::IO, mesh::Mesh2D{T} where {T<:Real})
-    println("Mesh information:")
+function Base.show(io::IO, mesh::DDMesh2D{T} where {T<:Real})
+    println("DDMesh information:")
     println("   -> dimension: 2")
-    println("   -> n_elems: $(length(mesh.elems))")
-    println("   -> n_nodes: $(length(mesh.nodes))")
+    println("   -> $(length(mesh.elems)) elements")
+    println("   -> $(length(mesh.nodes)) nodes")
 end
