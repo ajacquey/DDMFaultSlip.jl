@@ -5,11 +5,7 @@ using StaticArrays
 using Statistics
 using Test
 
-function σ_cst(X::SVector{2, T}, time::T) where {T<:Real}
-    return -1.0
-end
-
-function σ_cst(X::SVector{3, T}, time::T) where {T<:Real}
+function σ_cst(X, time::T) where {T<:Real}
     return -1.0
 end
 
@@ -24,6 +20,7 @@ function ϵ_analytical_3D(mesh::DDMesh2D{T}, μ::T, ν::T)::Vector{T} where {T<:
 
     return 4 * (1 - ν) / (π * μ) * sqrt.(1 .- r.^2)
 end
+
 @testset "Crack opening" begin
     @testset "PWC 2D" begin
         # Create mesh

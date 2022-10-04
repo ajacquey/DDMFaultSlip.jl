@@ -3,6 +3,8 @@ module DDMFaultSlip
 using StaticArrays
 using LinearAlgebra
 using Statistics: mean
+using InteractiveUtils
+using Printf
 using HMatrices
 using IterativeSolvers
 using TimerOutputs

@@ -43,7 +43,11 @@ mutable struct DDSolver{R,T<:Real}
 
     " Constructor for ShearDDProblem3D"
     function DDSolver(problem::ShearDDProblem3D{T}; hmat_eta::T = 3.0, hmat_atol::T = 0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
-        mat = ShearDDJacobian3D(problem; eta = hmat_eta, atol = hmat_atol)
+        if (problem.ν != 0.0)
+            mat = ShearDDJacobian3D(problem; eta = hmat_eta, atol = hmat_atol)
+        else
+            mat = ShearNoNuDDJacobian3D(problem; eta = hmat_eta, atol = hmat_atol)
+        end
         n_dof = size(mat, 1)
 
         R = typeof(mat.Esxx.coltree)
@@ -66,18 +70,23 @@ mutable struct DDSolver{R,T<:Real}
     # end
 end
 
-function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}) where {R,T<:Real}
-    dx, ch = bicgstabl!(dx, solver.jacobian, -solver.rhs; log = true, verbose = false, abstol = solver.l_abs_tol, reltol = solver.l_rel_tol)
+function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}
+    dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log = true, verbose = false, abstol = 1.0e-10, reltol = 1.0e-10)
 
     if log
         if ch.isconverged
-            println("    -> Linear Solve converged after ", ch.iters, " iterations.")
+            @printf("    -> Linear Solve converged after %i iterations.\n", ch.iters)
         else                
-            println("    -> Linear Solve did NOT converge after ", ch.iters, " iterations.")
+            @printf("    -> Linear Solve did NOT converge after %i iterations.\n", ch.iters)
         end
     end
 
     return dx
+end
+
+function print_NL_res(it::Int, r::T) where {T<:Real}
+    @printf("  %i Nonlinear |R| = %e\n", it, r)
+    return nothing
 end
 
 " Solve the problem using the IterativeSolvers package"
@@ -95,35 +104,25 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
     # @timeit timer "Preconditionning" precond = ilu(solver.mat, τ = 0.01)
     # @timeit timer "Preconditionning" precond = JacobiPreconditioner(solver.mat)
     if log
-        println("  ", 0, " Nonlinear Iteration: |R| = ", r0)
+        print_NL_res(0, r0)
     end
     # Main loop
     while (nl_iter <= solver.nl_max_it)
         # Check convergence
         if (r <= solver.nl_abs_tol)
             if log
-                println("Nonlinear Solve converged with absolute tolerance!")
-                println()
+                @printf("Solve converged with absolute tolerance!\n\n")
             end
             return nothing
         end
         if (r / r0 <= solver.nl_rel_tol)
             if log
-                println("Nonlinear Solve converged with relative tolerance!")
-                println()
+                @printf("Solve converged with relative tolerance!\n\n")
             end
             return nothing
         end
         # Linear Solve
-        @timeit timer "Solve" dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log = true, verbose = false, abstol = 1.0e-10, reltol = 1.0e-10)
-        # @timeit timer "Solve" dx = jacobi!(dx, solver.mat, -solver.rhs; maxiter = 200)
-        if log
-            if ch.isconverged
-                println("    -> Linear Solve converged after ", ch.iters, " iterations")
-            else
-                println("    -> Linear Solve did NOT converge after ", ch.iters, " iterations")
-            end
-        end
+        @timeit timer "Solve" dx = linear_solve!(dx, solver, log)
 
         # Update solution
         solver.solution .+= dx
@@ -137,7 +136,7 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
 
         nl_iter += 1
         if log
-            println("  ", nl_iter, " Nonlinear Iteration: |R| = ", norm(r))
+            print_NL_res(nl_iter, norm(r))
         end
     end
     # Error if exceeded maximum number of iterations

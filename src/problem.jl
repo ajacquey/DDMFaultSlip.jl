@@ -234,3 +234,16 @@ function addConstraint!(problem::ShearDDProblem3D{T}, sym::Symbol, cst::Abstract
     end
     return nothing
 end
+
+function Base.show(io::IO, problem::AbstractDDProblem{T}) where {T<:Real}
+    # Julia information
+    versioninfo()
+    @printf("\n")
+
+    # Paralelism
+    @printf("Paralelism:\n")
+    @printf("  Num threads: %i\n\n", Threads.nthreads())
+
+    # Mesh
+    show(problem.mesh)
+end

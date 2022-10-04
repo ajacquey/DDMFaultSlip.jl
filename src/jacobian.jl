@@ -94,21 +94,47 @@ mutable struct ShearDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
         # Assemble H-matrices
         Esxx = assemble_hmat(Kxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esyy = assemble_hmat(Kyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        if (problem.ν != 0.0)
-            Esxy = assemble_hmat(Kxy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        end
+        Esxy = assemble_hmat(Kxy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
         R = typeof(Esxx.coltree)
-        # return new{R,T}(Hmat, jac_loc)
-        if (problem.ν != 0.0)
-            return new{R,T}(Esxx, Esyy, Esxy, zeros(T, size(Esxx, 1)), zeros(T, size(Esxx, 1)))
-        else
-            return new{R,T}(Esxx, Esyy)
-        end
+        return new{R,T}(Esxx, Esyy, Esxy, zeros(T, size(Esxx, 1)), zeros(T, size(Esxx, 1)))
     end
 end
 
 function Base.size(J::ShearDDJacobian3D{R,T}) where {R,T<:Real}
+    return size(J.Esxx, 1) + size(J.Esyy, 2), size(J.Esxx, 2) + size(J.Esyy, 2)
+end
+
+mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+    " Shear collocation matrices"
+    Esxx::HMatrix{R,T}
+    Esyy::HMatrix{R,T}
+
+    " Local jacobian"
+    jac_loc_x::Vector{T}
+    jac_loc_y::Vector{T}
+
+    " Constructor"
+    function ShearNoNuDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T = 2.0, atol::T = 1.0e-06) where {T<:Real}
+        # Create H-matrices
+        Kxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
+        Kyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
+        # Cluster tree
+        Xclt = Yclt = ClusterTree([Kxx.e[i].X for i in 1:length(Kxx.e)])
+        # Admissibility
+        adm = StrongAdmissibilityStd(; eta = eta)
+        # Compatibility
+        comp = PartialACA(; atol = atol)
+        # Assemble H-matrices
+        Esxx = assemble_hmat(Kxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Esyy = assemble_hmat(Kyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+
+        R = typeof(Esxx.coltree)
+        return new{R,T}(Esxx, Esyy, zeros(T, size(Esxx, 1)), zeros(T, size(Esxx, 1)))
+    end
+end
+
+function Base.size(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
     return size(J.Esxx, 1) + size(J.Esyy, 2), size(J.Esxx, 2) + size(J.Esyy, 2)
 end
 
@@ -159,6 +185,19 @@ function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian3D{R,T}, x::Abs
     return y
 end
 
+" mul! function for ShearNoNuDDJacobian3D"
+function LinearAlgebra.mul!(y::AbstractVector, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+    
+    # Hmatrix multiplication
+    collocation_mul!(y, J, x)
+
+    # # Add local jacobian contributions
+    # y .+= dot(J.jac_loc, x)
+
+    return y
+end
+
 " collocation_mul! function for NormalDDJacobian"
 function collocation_mul!(y::AbstractVector{T}, J::NormalDDJacobian{R,T}, x::AbstractVector{T}; global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
     mul!(y, J.En, x, 1, 0; global_index=global_index, threads=threads)
@@ -180,6 +219,16 @@ function collocation_mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::Ab
     return y
 end
 
+" collocation_mul! function for ShearNoNuDDJacobian3D"
+function collocation_mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+    n = size(J.Esxx, 1)
+
+    y[1:n] = J.Esxx * x[1:n]
+    y[n+1:2*n] = J.Esyy * x[n+1:2*n]
+
+    return y
+end
+
 " collocation_mul! function for ShearDDJacobian3D"
 function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
     n = size(J.Esxx, 1)
@@ -193,42 +242,15 @@ function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Int
     end
 end
 
-# """
-# Custom `show` function for `DDMJacobian{R,T}` that prints some information.
-# """
-# function Base.show(io::IO, J::DDMJacobian{R,T}) where {R,T<:Real}
-#     println("Jacobian information:")
-#     println("   -> H-matrix")
-#     show(J.Hmat)
-#     # println("   -> order: $(cps.order)")
-#     # println("   -> n_cps: $(length(cps.cpoints))")
-# end
+" collocation_mul! function for ShearNoNuDDJacobian3D"
+function collocation_mul(J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
+    n = size(J.Esxx, 1)
 
-# """
-# Define `mul!` function for matrix vector multiplication with a DDMJacobian
-# """
-# function LinearAlgebra.mul!(y::AbstractVector{T}, J::DDMJacobian{R,T}, v::AbstractVector{T}) where {R,T<:Real}
-#     # Number of variables
-#     n_var = length(J.jac_loc)
-#     # Size of H-mat
-#     n = size(J.Hmat, 1)
-
-#     # Loop over n_var
-#     for i in 1:n_var
-#         # H-matrix vector multiplication
-#         y[(i - 1) * n + 1:i * n] = mul!(y[(i - 1) * n + 1:i * n], J.Hmat , v[(i - 1) * n + 1:i * n], 1, 0; threads=false, global_index=true)
-#         # Local Jacobian multiplication
-#         for j in 1:n_var
-#             y[(i - 1) * n + 1:i * n] += J.jac_loc[i][(j - 1) * n + 1:j * n] .* v[(j - 1) * n + 1:j * n]
-#         end
-#     end
-
-#     return y
-# end
-
-# """
-# Define the `*` operator for matrix vector multiplication with a DDMJacobian
-# """
-# function LinearAlgebra.:*(J::DDMJacobian{R,T}, v::AbstractVector{T}) where {R,T<:Real}
-#     return mul!(similar(v), J , v)
-# end
+    if (d == 1)
+        return J.Esxx * x[1:n]
+    elseif (d == 2)
+        return J.Esyy * x[n+1:2*n]
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end

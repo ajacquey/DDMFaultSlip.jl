@@ -54,10 +54,10 @@ end
 Custom `show` function for `DDMesh1D{T}` that prints some information.
 """
 function Base.show(io::IO, mesh::DDMesh1D{T} where {T<:Real})
-    println("DDMesh information:")
-    println("   -> dimension: 1")
-    println("   -> $(length(mesh.elems)) elements")
-    println("   -> $(length(mesh.nodes)) nodes")
+    @printf("Mesh information:\n")
+    @printf("  Mesh dimension: 1\n")
+    @printf("  Nodes:          %i\n", length(mesh.nodes))
+    @printf("  Elements:       %i\n\n", length(mesh.elems))
 end
 
 """
@@ -71,7 +71,7 @@ struct DDMesh2D{T<:Real} <: DDMesh{T}
     " Elements connection"
     elem2nodes::Vector{SVector{3, Int}}
     " Constructor"
-    function DDMesh2D(T::DataType, file::String)
+    function DDMesh2D(T::DataType, file::String; log::Bool = false)
         # Check if file exists
         @assert isfile(file)
         # Create containers
@@ -150,9 +150,9 @@ struct DDMesh2D{T<:Real} <: DDMesh{T}
         for k in 1:n_elems
             elems[k] = DDTriangleElem(SVector(nodes[elem2nodes[k][1]], nodes[elem2nodes[k][2]], nodes[elem2nodes[k][3]]), (nodes[elem2nodes[k][1]] + nodes[elem2nodes[k][2]] + nodes[elem2nodes[k][3]]) / 3.0)
         end
-        println()
-        println("-> Done reading ", file, " with ", length(nodes), " nodes and ", length(elems), " elements.")
-        println()
+        if log
+            @printf("\n-> Done reading %s with %i nodes and %i elements.\n\n", file, length(nodes), length(elems))
+        end
         return new{T}(nodes, elems, elem2nodes)
     end
 end
@@ -161,8 +161,8 @@ end
 Custom `show` function for `DDMesh2D{T}` that prints some information.
 """
 function Base.show(io::IO, mesh::DDMesh2D{T} where {T<:Real})
-    println("DDMesh information:")
-    println("   -> dimension: 2")
-    println("   -> $(length(mesh.elems)) elements")
-    println("   -> $(length(mesh.nodes)) nodes")
+    @printf("Mesh information:\n")
+    @printf("  Mesh dimension: 2\n")
+    @printf("  Nodes:          %i\n", length(mesh.nodes))
+    @printf("  Elements:       %i\n\n", length(mesh.elems))
 end

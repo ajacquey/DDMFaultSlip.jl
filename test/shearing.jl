@@ -5,11 +5,7 @@ using StaticArrays
 using Statistics
 using Test
 
-function τ_cst(X::SVector{2, T}, time::T) where {T<:Real}
-    return 1.0
-end
-
-function τ_cst(X::SVector{3, T}, time::T) where {T<:Real}
+function τ_cst(X, time::T) where {T<:Real}
     return 1.0
 end
 
@@ -50,30 +46,51 @@ end
         # Error less than 2%
         @test err < 0.02
     end
-    # @testset "PWC 3D, ν = 0" begin
-    #     # Create mesh
-    #     mesh = DDMesh2D(Float64, "mesh.msh")
+    @testset "PWC 3D, ν = 0, x" begin
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh.msh")
 
-    #     # Elastic property
-    #     μ = 1.0
-    #     ν = 0.0
+        # Elastic property
+        μ = 1.0
+        ν = 0.0
 
-    #     # Create problem
-    #     problem = ShearDDProblem3D(mesh; μ = μ, ν = ν)
-    #     addConstraint!(problem, :δ_x, FunctionConstraint(τ_cst))
+        # Create problem
+        problem = ShearDDProblem3D(mesh; μ = μ, ν = ν)
+        addConstraint!(problem, :x, FunctionConstraint(τ_cst))
 
-    #     # Run problem
-    #     run!(problem; log = true)
+        # Run problem
+        run!(problem; log = false)
 
-    #     # Analytical solution
-    #     δ_sol = δ_analytical_3D(mesh, μ, ν)
-    #     # Error
-    #     err = mean(abs.(problem.δ[1].value - δ_sol) ./ δ_sol)
-    #     println(err)
-    #     # Error less than 4%
-    #     @test err < 0.04
-    # end
-    @testset "PWC 3D, ν = 0.25" begin
+        # Analytical solution
+        δ_sol = δ_analytical_3D(mesh, μ, ν)
+        # Error
+        err = mean(abs.(problem.δ_x.value - δ_sol) ./ δ_sol)
+        # Error less than 4%
+        @test err < 0.04
+    end
+    @testset "PWC 3D, ν = 0, y" begin
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh.msh")
+
+        # Elastic property
+        μ = 1.0
+        ν = 0.0
+
+        # Create problem
+        problem = ShearDDProblem3D(mesh; μ = μ, ν = ν)
+        addConstraint!(problem, :y, FunctionConstraint(τ_cst))
+
+        # Run problem
+        run!(problem; log = false)
+
+        # Analytical solution
+        δ_sol = δ_analytical_3D(mesh, μ, ν)
+        # Error
+        err = mean(abs.(problem.δ_y.value - δ_sol) ./ δ_sol)
+        # Error less than 4%
+        @test err < 0.04
+    end
+    @testset "PWC 3D, ν = 0.25, x" begin
         # Create mesh
         mesh = DDMesh2D(Float64, "mesh.msh")
 
@@ -86,12 +103,34 @@ end
         addConstraint!(problem, :x, FunctionConstraint(τ_cst))
 
         # Run problem
-        run!(problem; log = true)
+        run!(problem; log = false)
 
         # Analytical solution
         δ_sol = δ_analytical_3D(mesh, μ, ν)
         # Error
         err = mean(abs.(problem.δ_x.value - δ_sol) ./ δ_sol)
+        # Error less than 4%
+        @test err < 0.04
+    end
+    @testset "PWC 3D, ν = 0.25, y" begin
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh.msh")
+
+        # Elastic property
+        μ = 1.0
+        ν = 0.25
+
+        # Create problem
+        problem = ShearDDProblem3D(mesh; μ = μ, ν = ν)
+        addConstraint!(problem, :y, FunctionConstraint(τ_cst))
+
+        # Run problem
+        run!(problem; log = false)
+
+        # Analytical solution
+        δ_sol = δ_analytical_3D(mesh, μ, ν)
+        # Error
+        err = mean(abs.(problem.δ_y.value - δ_sol) ./ δ_sol)
         # Error less than 4%
         @test err < 0.04
     end
