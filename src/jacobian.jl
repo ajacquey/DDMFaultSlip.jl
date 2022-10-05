@@ -24,12 +24,9 @@ mutable struct NormalDDJacobian{R,T<:Real} <: DDJacobian{R,T}
         comp = PartialACA(; atol = atol)
         # Assemble H-matrix
         En = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        
-        # Local contributions - initialized to 0
-        jac_loc = zeros(T, size(En, 1))
 
         R = typeof(En.coltree)
-        return new{R,T}(En, jac_loc)
+        return new{R,T}(En, zeros(T, size(En, 1)))
     end
 end
 
@@ -56,12 +53,9 @@ mutable struct ShearDDJacobian2D{R,T<:Real} <: DDJacobian{R,T}
         comp = PartialACA(; atol = atol)
         # Assemble H-matrix
         Es = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-            
-        # Local contributions - initialized to 0
-        jac_loc = zeros(T, size(Es, 1))
 
         R = typeof(Es.coltree)
-        return new{R,T}(Es, jac_loc)
+        return new{R,T}(Es, zeros(T, size(Es, 1)))
     end
 end
 
@@ -138,6 +132,36 @@ function Base.size(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
     return size(J.Esxx, 1) + size(J.Esyy, 2), size(J.Esxx, 2) + size(J.Esyy, 2)
 end
 
+mutable struct CoupledDDJacobian2D{R,T<:Real} <: DDJacobian{R,T}
+    " Collocation matrices"
+    E::HMatrix{R,T}
+
+    " Local jacobian"
+    jac_loc_ϵ::Vector{T}
+    jac_loc_δ::Vector{T}
+
+    " Constructor"
+    function CoupledDDJacobian2D(problem::CoupledDDProblem2D{T}; eta::T = 2.0, atol::T = 1.0e-06) where {T<:Real}
+        # Create H-matrix xx
+        K = DD2DElasticMatrix(problem.mesh.elems, problem.μ)
+        # Cluster tree
+        Xclt = Yclt = ClusterTree([K.e[i].X for i in 1:length(K.e)])
+        # Admissibility
+        adm = StrongAdmissibilityStd(; eta = eta)
+        # Compatibility
+        comp = PartialACA(; atol = atol)
+        # Assemble H-matrix
+        E = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+
+        R = typeof(E.coltree)
+        return new{R,T}(E, zeros(T, size(E, 1)), zeros(T, size(E, 1)))
+    end
+end
+
+function Base.size(J::CoupledDDJacobian2D{R,T}) where {R,T<:Real}
+    return 2 * size(J.E, 1), 2 * size(J.E, 2)
+end
+
 function Base.size(J::DDJacobian{R,T}, d::Integer) where {R,T<:Real}
     if d < 1 || d > 2
         throw(ArgumentError("dimension d must be ≥ 1 and ≤ 2, got $d"))
@@ -164,7 +188,7 @@ function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian2D{R,T}, x::Abs
     global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
     
     # Hmatrix multiplication
-    mul!(y, J.Es, -x, a, b; global_index=global_index, threads=threads)
+    collocation_mul!(y, J, x)
 
     # Add local jacobian contributions
     y .+= dot(J.jac_loc, x)
@@ -187,6 +211,19 @@ end
 
 " mul! function for ShearNoNuDDJacobian3D"
 function LinearAlgebra.mul!(y::AbstractVector, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+    
+    # Hmatrix multiplication
+    collocation_mul!(y, J, x)
+
+    # # Add local jacobian contributions
+    # y .+= dot(J.jac_loc, x)
+
+    return y
+end
+
+" mul! function for CoupledDDJacobian2D"
+function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian2D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
     
     # Hmatrix multiplication
@@ -229,6 +266,16 @@ function collocation_mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T}, x
     return y
 end
 
+" collocation_mul! function for CoupledDDJacobian2D"
+function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+    n = size(J.E, 1)
+
+    y[1:n] = J.E * x[1:n]
+    y[n+1:2*n] = J.E * (-x[n+1:2*n])
+
+    return y
+end
+
 " collocation_mul! function for ShearDDJacobian3D"
 function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
     n = size(J.Esxx, 1)
@@ -250,6 +297,19 @@ function collocation_mul(J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d:
         return J.Esxx * x[1:n]
     elseif (d == 2)
         return J.Esyy * x[n+1:2*n]
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end
+
+" collocation_mul! function for CoupledDDJacobian2D"
+function collocation_mul(J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
+    n = size(J.E, 1)
+
+    if (d == 0)
+        return J.E * x[1:n]
+    elseif (d == 1)
+        return J.E * (-x[n+1:2*n])
     else
         throw(ErrorException("Wrong dimension!"))
     end

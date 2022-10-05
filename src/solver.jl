@@ -54,24 +54,18 @@ mutable struct DDSolver{R,T<:Real}
         return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
     end
 
-    # " Constructor for CoupledDDProblem"
-    # function DDSolver(problem::CoupledDDProblem{T}; hmat_eta::T = 3.0, hmat_atol::T = 0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
-    #     if isa(problem.mesh, DDMesh1D)
-    #         n_dof = 2 * length(problem.elems)
-    #         # mat = 
-    #     elseif isa(problem.mesh, DDMesh2D)
-    #         n_dof = 3 * length(problem.elems)
-    #         # mat = 
-    #     end
-    #     n_dof = size(mat, 1)
+    " Constructor for CoupledDDProblem2D"
+    function DDSolver(problem::CoupledDDProblem2D{T}; hmat_eta::T = 3.0, hmat_atol::T = 0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+        mat = CoupledDDJacobian2D(problem; eta = hmat_eta, atol = hmat_atol)
+        n_dof = size(mat, 1)
 
-    #     R = typeof(mat.En.coltree)
-    #     return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
-    # end
+        R = typeof(mat.E.coltree)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+    end
 end
 
 function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}
-    dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log = true, verbose = false, abstol = 1.0e-10, reltol = 1.0e-10)
+    dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log = true, abstol = 1.0e-10, reltol = 1.0e-10)
 
     if log
         if ch.isconverged
@@ -90,7 +84,7 @@ function print_NL_res(it::Int, r::T) where {T<:Real}
 end
 
 " Solve the problem using the IterativeSolvers package"
-function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput; log::Bool = true) where {R,T<:Real}
+function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput; log::Bool = true, linear_log::Bool = false) where {R,T<:Real}
     ##### Newton loop #####
     # Non-linear iterations
     nl_iter = 0
@@ -122,7 +116,7 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
             return nothing
         end
         # Linear Solve
-        @timeit timer "Solve" dx = linear_solve!(dx, solver, log)
+        @timeit timer "Solve" dx = linear_solve!(dx, solver, linear_log)
 
         # Update solution
         solver.solution .+= dx
@@ -143,4 +137,10 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
     if (nl_iter > solver.nl_max_it)
         throw(ErrorException("Exceeded the maximum number of nonlinear iterations!"))
     end
+end
+
+function Base.show(io::IO, solver::DDSolver{R,T}) where {R,T<:Real}
+    # Nonlinear system
+    @printf("Nonlinear system:\n")
+    @printf("  Num DOFs: %i\n\n", size(solver.mat, 1))
 end

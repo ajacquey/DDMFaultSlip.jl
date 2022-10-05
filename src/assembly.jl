@@ -51,12 +51,29 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
     return nothing
 end
 
+function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem::CoupledDDProblem2D{T}) where {R,T<:Real}
+    # Loop over elements
+    n = size(solver.mat.E, 1)
+    Threads.@threads for idx in 1:length(problem.mesh.elems)
+        for cst in problem.constraints_ϵ
+            (solver.rhs[idx], solver.mat.jac_loc_ϵ[idx]) = (solver.rhs[idx], solver.mat.jac_loc_ϵ[idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+        end
+
+        for cst in problem.constraints_δ
+            (solver.rhs[n + idx], solver.mat.jac_loc_δ[idx]) = (solver.rhs[n + idx], solver.mat.jac_loc_δ[idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+        end
+
+        # for frct in problem.friction
+        # end
+    end
+end
+
 function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:Real}
     # Loop over elements
     Threads.@threads for idx in 1:length(problem.mesh.elems)
         problem.ϵ.value[idx] = problem.ϵ.value_old[idx] + solver.solution[idx]
     end
-    problem.σ.value = problem.σ.value_old + solver.mat.En * collocation_mul!(similar(solver.solution), solver.mat, solver.solution)
+    problem.σ.value = problem.σ.value_old + collocation_mul!(similar(solver.solution), solver.mat, solver.solution)
     return nothing
 end
 
@@ -78,5 +95,17 @@ function update!(problem::ShearDDProblem3D{T}, solver::DDSolver{R,T}) where {R,T
     end
     problem.τ_x.value = problem.τ_x.value_old + collocation_mul(solver.mat, solver.solution, 1)
     problem.τ_y.value = problem.τ_y.value_old + collocation_mul(solver.mat, solver.solution, 2)
+    return nothing
+end
+
+function update!(problem::CoupledDDProblem2D{T}, solver::DDSolver{R,T}) where {R,T<:Real}
+    # Loop over elements
+    n = size(solver.mat.E, 1)
+    Threads.@threads for idx in 1:length(problem.mesh.elems)
+        problem.ϵ.value[idx] = problem.ϵ.value_old[idx] + solver.solution[idx]
+        problem.δ.value[idx] = problem.δ.value_old[idx] + solver.solution[n+idx]
+    end
+    problem.σ.value = problem.σ.value_old + collocation_mul(solver.mat, solver.solution, 0)
+    problem.τ.value = problem.τ.value_old + collocation_mul(solver.mat, solver.solution, 1)
     return nothing
 end

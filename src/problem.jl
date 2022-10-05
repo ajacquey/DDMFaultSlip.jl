@@ -118,9 +118,14 @@ mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     " The shear DD stress"
     τ::AuxVariable{T}
 
+    " Constraints"
+    constraints_ϵ::Vector{AbstractConstraint}
+    constraints_δ::Vector{AbstractConstraint}
+    friction::Vector{AbstractFriction}
+
     " Incomplete constructor"
-    function CoupledDDProblem2D(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, false, transient, Variable(T, length(mesh.elems)), Variable(T, length(mesh.elems)), AuxVariable(T, length(mesh.elems)), AuxVariable(T, length(mesh.elems)))
+    function CoupledDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
+        return new{T}(mesh, μ, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0))
     end
 end
 
@@ -163,7 +168,17 @@ function addNormalDDIC!(problem::NormalDDProblem{T}, func_ic::Function) where {T
     return nothing
 end
 
+function addNormalDDIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
+    problem.ϵ.func_ic = func_ic
+    return nothing
+end
+
 function addShearDDIC!(problem::ShearDDProblem2D{T}, func_ic::Function) where {T<:Real}
+    problem.δ.func_ic = func_ic
+    return nothing
+end
+
+function addShearDDIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
     problem.δ.func_ic = func_ic
     return nothing
 end
@@ -183,12 +198,12 @@ function applyNormalDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
 end
 
 function applyShearDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
-    if isa(problem, ShearDDProblem2D)
+    if (isa(problem, ShearDDProblem2D) || isa(problem, CoupledDDProblem2D))
         problem.δ.value = problem.δ.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
         problem.δ.value_old = copy(problem.δ.value)
         problem.τ.value = problem.τ.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
         problem.τ.value_old = copy(problem.τ.value)
-    elseif isa(problem, ShearDDProblem3D)
+    elseif (isa(problem, ShearDDProblem3D) || isa(problem, CoupledDDProblem3D))
         problem.δ_x.value = problem.δ_x.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
         problem.δ_x.value_old = copy(problem.δ_x.value)
         problem.τ_x.value = problem.τ_x.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
@@ -208,8 +223,10 @@ function applyIC!(problem::AbstractDDProblem{T}) where {T<:Real}
         applyNormalDDIC!(problem)
     elseif isa(problem, ShearDDProblem2D) || isa(problem, ShearDDProblem3D)
         applyShearDDIC!(problem)
+    else # Coupled problems
+        applyNormalDDIC!(problem)
+        applyShearDDIC!(problem)
     end
-    # Need to look at CoupledProblems
     return nothing
 end
 
@@ -223,12 +240,22 @@ function addConstraint!(problem::ShearDDProblem2D{T}, cst::AbstractConstraint) w
     return nothing
 end
 
-
 function addConstraint!(problem::ShearDDProblem3D{T}, sym::Symbol, cst::AbstractConstraint) where {T<:Real}
     if (sym == :x)
         push!(problem.constraints_x, cst)
     elseif (sym == :y)
         push!(problem.constraints_y, cst)
+    else
+        throw(ErrorException("No dimension noted $(sym)!"))
+    end
+    return nothing
+end
+
+function addConstraint!(problem::CoupledDDProblem2D{T}, sym::Symbol, cst::AbstractConstraint) where {T<:Real}
+    if (sym == :ϵ)
+        push!(problem.constraints_ϵ, cst)
+    elseif (sym == :δ)
+        push!(problem.constraints_δ, cst)
     else
         throw(ErrorException("No dimension noted $(sym)!"))
     end

@@ -1,4 +1,4 @@
-function run!(problem::AbstractDDProblem{T}; log::Bool = true, nl_max_it::Int64 = 100, nl_abs_tol::T = 1.0e-10, nl_rel_tol::T = 1.0e-10) where {T<:Real}
+function run!(problem::AbstractDDProblem{T}; log::Bool = true, linear_log::Bool = false, nl_max_it::Int64 = 100, nl_abs_tol::T = 1.0e-10, nl_rel_tol::T = 1.0e-10) where {T<:Real}
     # Timer
     timer = TimerOutput()
     
@@ -9,6 +9,7 @@ function run!(problem::AbstractDDProblem{T}; log::Bool = true, nl_max_it::Int64 
     if log
         @timeit timer "Priting simulation information" begin
             show(problem)
+            show(solver)
         end
     end
 
@@ -16,7 +17,7 @@ function run!(problem::AbstractDDProblem{T}; log::Bool = true, nl_max_it::Int64 
     @timeit timer "Apply Initial Conditions" applyIC!(problem)
 
     # Steady state problem
-    solve!(solver, problem, timer; log)
+    solve!(solver, problem, timer; log = log, linear_log = linear_log)
 
     # Final update
     # @timeit timer "Final update" final_update!(problem)

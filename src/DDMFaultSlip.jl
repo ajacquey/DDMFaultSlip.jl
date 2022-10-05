@@ -22,11 +22,13 @@ export TimeSequence
 include("variable.jl")
 
 include("constraints/constraint.jl")
-include("constraints/function_constraint.jl")
 export FunctionConstraint
 
+include("constraints/friction.jl")
+export ConstantFriction
+
 include("problem.jl")
-export NormalDDProblem, ShearDDProblem2D, ShearDDProblem3D, CoupledDDProblem
+export NormalDDProblem, ShearDDProblem2D, ShearDDProblem3D, CoupledDDProblem2D
 export addNormalDDVariable!, addShearDDVariable!
 export addConstraint!
 

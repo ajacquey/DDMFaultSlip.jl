@@ -6,4 +6,5 @@ using Test
     include("generic.jl")
     include("shearing.jl")
     include("injection.jl")
+    include("coupled.jl")
 end
