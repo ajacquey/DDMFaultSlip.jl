@@ -137,8 +137,8 @@ mutable struct CoupledDDJacobian2D{R,T<:Real} <: DDJacobian{R,T}
     E::HMatrix{R,T}
 
     " Local jacobian"
-    jac_loc_ϵ::Vector{T}
-    jac_loc_δ::Vector{T}
+    jac_loc_ϵ::Vector{Vector{T}}
+    jac_loc_δ::Vector{Vector{T}}
 
     " Constructor"
     function CoupledDDJacobian2D(problem::CoupledDDProblem2D{T}; eta::T = 2.0, atol::T = 1.0e-06) where {T<:Real}
@@ -153,8 +153,16 @@ mutable struct CoupledDDJacobian2D{R,T<:Real} <: DDJacobian{R,T}
         # Assemble H-matrix
         E = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
+        # Local jacobian
+        jac_loc_ϵ = Vector{Vector{T}}(undef, 2)
+        jac_loc_ϵ[1] = zeros(T, size(E, 1))
+        jac_loc_ϵ[2] = zeros(T, size(E, 1))
+        jac_loc_δ = Vector{Vector{T}}(undef, 2)
+        jac_loc_δ[1] = zeros(T, size(E, 1))
+        jac_loc_δ[2] = zeros(T, size(E, 1))
+
         R = typeof(E.coltree)
-        return new{R,T}(E, zeros(T, size(E, 1)), zeros(T, size(E, 1)))
+        return new{R,T}(E, jac_loc_ϵ, jac_loc_δ)
     end
 end
 

@@ -56,11 +56,11 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
     n = size(solver.mat.E, 1)
     Threads.@threads for idx in 1:length(problem.mesh.elems)
         for cst in problem.constraints_ϵ
-            (solver.rhs[idx], solver.mat.jac_loc_ϵ[idx]) = (solver.rhs[idx], solver.mat.jac_loc_ϵ[idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+            (solver.rhs[idx], solver.mat.jac_loc_ϵ[1][idx]) = (solver.rhs[idx], solver.mat.jac_loc_ϵ[1][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
         end
 
         for cst in problem.constraints_δ
-            (solver.rhs[n + idx], solver.mat.jac_loc_δ[idx]) = (solver.rhs[n + idx], solver.mat.jac_loc_δ[idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+            (solver.rhs[n + idx], solver.mat.jac_loc_δ[2][idx]) = (solver.rhs[n + idx], solver.mat.jac_loc_δ[2][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
         end
 
         # for frct in problem.friction
