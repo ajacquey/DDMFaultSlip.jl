@@ -25,9 +25,12 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " A vector of Constraints"
     constraints::Vector{AbstractConstraint}
 
+    " A vector of PressureCoupling"
+    fluid_coupling::Vector{AbstractFluidCoupling}
+
     " Constructor"
     function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient, Variable(T, :ϵ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0))
+        return new{T}(mesh, μ, ν, false, transient, Variable(T, :ϵ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
     end
 end
 
@@ -123,6 +126,9 @@ mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     constraints_δ::Vector{AbstractConstraint}
     friction::Vector{AbstractFriction}
 
+    " A vector of PressureCoupling"
+    fluid_coupling::Vector{AbstractFluidCoupling}
+
     " Incomplete constructor"
     function CoupledDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
         return new{T}(mesh, μ, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0))
@@ -158,9 +164,21 @@ mutable struct CoupledDDProblem3D{T<:Real} <: AbstractDDProblem{T}
     τ::SVector{2,AuxVariable{T}}
 
     " Incomplete constructor"
-    function CoupledDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
+    function CoupledDDProblem3D(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
         return new{T}(mesh, μ, ν, false, transient, Variable(T, length(mesh.elems)), SVector(Variable(T, length(mesh.elems)), Variable(T, length(mesh.elems))), AuxVariable(T, length(mesh.elems)), SVector(AuxVariable(T, length(mesh.elems)), AuxVariable(T, length(mesh.elems))))
     end
+end
+
+function hasNormalDD(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return (isa(problem, NormalDDProblem) || isa(problem, CoupledDDProblem2D) || isa(problem, CoupledDDProblem3D))
+end
+
+function hasShearDD2D(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return (isa(problem, ShearDDProblem2D) || isa(problem, CoupledDDProblem2D))
+end
+
+function hasShearDD3D(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return (isa(problem, ShearDDProblem3D) || isa(problem, CoupledDDProblem3D))
 end
 
 function addNormalDDIC!(problem::NormalDDProblem{T}, func_ic::Function) where {T<:Real}
@@ -259,6 +277,22 @@ function addConstraint!(problem::CoupledDDProblem2D{T}, sym::Symbol, cst::Abstra
     else
         throw(ErrorException("No dimension noted $(sym)!"))
     end
+    return nothing
+end
+
+function hasFluidCoupling(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return ~isempty(problem.fluid_coupling)
+end
+
+function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupling{T}) where {T<:Real}
+    # Check if FluidCoupling is not empty
+    if (hasFluidCoupling(problem))
+        throw(ErrorException("The problem already has a FluidCoupling!"))
+    end
+
+    # Add FluidCoupling
+    push!(problem.fluid_coupling, pp)
+    
     return nothing
 end
 
