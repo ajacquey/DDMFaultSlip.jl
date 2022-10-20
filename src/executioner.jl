@@ -73,15 +73,6 @@ function print_TimeStepInfo(exec::TransientExecutioner{T}) where {T<:Real}
     return nothing
 end
 
-function computePressureCoupling!(problem::AbstractDDProblem{T}, time::T, timer::TimerOutput) where {T<:Real}
-    # Check if problem has pressure coupling
-    if hasproperty(problem, :fluid_coupling)
-
-    end
-    
-    return nothing
-end
-
 function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::Bool = true, linear_log::Bool = false, nl_max_it::Int64 = 100, nl_abs_tol::T = 1.0e-10, nl_rel_tol::T = 1.0e-10) where {T<:Real}
     # Timer
     timer = TimerOutput()
@@ -126,7 +117,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::
         # Pressure update
         computePressureCoupling!(problem, exec.time, timer)
         # Transient problem
-        # solve!(solver, problem, timer; log = log, linear_log = linear_log)
+        solve!(solver, problem, timer; log = log, linear_log = linear_log)
 
         # # Final update
         # @timeit timer "Final update" final_update!(problem)
@@ -137,7 +128,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::
         # end
 
         # Reinit solver
-        # @timeit timer "Reinitialize Solver" reinit!(solver)
+        @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step = true)
     end
 
     # Final update

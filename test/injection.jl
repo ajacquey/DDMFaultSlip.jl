@@ -16,7 +16,7 @@ include("injection_utils.jl")
         # Imposed shear stress
         function τ_inj(X, time)
             λ = lambda_analytical_gs(T, 500)
-            return erfc(λ * abs(X[1])) - T
+            return T - erfc(λ * abs(X[1]))
         end
 
         # Analytical solution
@@ -57,7 +57,7 @@ include("injection_utils.jl")
         # Imposed shear stress
         function τ_inj(X, time)
             λ = lambda_analytical_gs(T, 500)
-            return erfc(λ * abs(X[1])) - T
+            return T - erfc(λ * abs(X[1]))
         end
 
         # Analytical solution
@@ -98,7 +98,7 @@ include("injection_utils.jl")
         # Imposed shear stress
         function τ_inj(X, time)
             λ = lambda_analytical_gs(T, 500)
-            return erfc(λ * abs(X[1])) - T
+            return T - erfc(λ * abs(X[1]))
         end
 
         # Analytical solution

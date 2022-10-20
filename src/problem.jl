@@ -131,7 +131,7 @@ mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
 
     " Incomplete constructor"
     function CoupledDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0))
+        return new{T}(mesh, μ, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
     end
 end
 
@@ -204,6 +204,16 @@ end
 function addShearDDIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
     problem.δ_x.func_ic = func_ic[1]
     problem.δ_y.func_ic = func_ic[2]
+    return nothing
+end
+
+function addNormalStressIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
+    problem.σ.func_ic = func_ic
+    return nothing
+end
+
+function addShearStressIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
+    problem.τ.func_ic = func_ic
     return nothing
 end
 
@@ -280,8 +290,32 @@ function addConstraint!(problem::CoupledDDProblem2D{T}, sym::Symbol, cst::Abstra
     return nothing
 end
 
+function hasFrictionConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    if hasproperty(problem, :friction)
+        return ~isempty(problem.friction)
+    else
+        return false
+    end
+end
+
+function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::AbstractFriction{T}) where {T<:Real}
+    # Check if problem has friction
+    if (hasFrictionConstraint(problem))
+        throw(ErrorException("The problem already has a FrictionConstraint!"))
+    end
+
+    # Add FrictionConstraint
+    push!(problem.friction, friction)
+    
+    return nothing
+end
+
 function hasFluidCoupling(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    return ~isempty(problem.fluid_coupling)
+    if hasproperty(problem, :fluid_coupling)
+        return ~isempty(problem.fluid_coupling)
+    else
+        return false
+    end
 end
 
 function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupling{T}) where {T<:Real}

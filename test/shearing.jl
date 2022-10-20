@@ -5,7 +5,11 @@ using StaticArrays
 using Statistics
 using Test
 
-function τ_cst(X, time::T) where {T<:Real}
+function τ_cst(X::SVector{2, T}, time::T) where {T<:Real}
+    return -1.0
+end
+
+function τ_cst(X::SVector{3, T}, time::T) where {T<:Real}
     return 1.0
 end
 

@@ -105,13 +105,13 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
         # Check convergence
         if (r <= solver.nl_abs_tol)
             if log
-                @printf("Solve converged with absolute tolerance!\n\n")
+                @printf("Solve converged with absolute tolerance!\n")
             end
             return nothing
         end
         if (r / r0 <= solver.nl_rel_tol)
             if log
-                @printf("Solve converged with relative tolerance!\n\n")
+                @printf("Solve converged with relative tolerance!\n")
             end
             return nothing
         end
@@ -142,5 +142,14 @@ end
 function Base.show(io::IO, solver::DDSolver{R,T}) where {R,T<:Real}
     # Nonlinear system
     @printf("Nonlinear system:\n")
-    @printf("  Num DOFs: %i\n\n", size(solver.mat, 1))
+    @printf("  Num DoFs: %i\n\n", size(solver.mat, 1))
+end
+
+" Reinitialize solver after successful solve"
+function reinit!(solver::DDSolver{R,T}; end_time_step::Bool = false) where {R,T<:Real}
+    fill!(solver.rhs, 0.0)
+    reinitLocalJacobian!(solver.mat)
+    if end_time_step
+        fill!(solver.solution, 0.0)
+    end
 end

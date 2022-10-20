@@ -25,14 +25,18 @@ include("constraints/constraint.jl")
 export FunctionConstraint
 
 include("constraints/friction.jl")
+export ConstantYield
 export ConstantFriction
 
 include("fluid_coupling.jl")
+export FunctionPressure
 
 include("problem.jl")
 export NormalDDProblem, ShearDDProblem2D, ShearDDProblem3D, CoupledDDProblem2D
-export addNormalDDVariable!, addShearDDVariable!
+export addNormalStressIC!, addShearStressIC!
 export addConstraint!
+export addFrictionConstraint!
+export addFluidCoupling!
 
 include("jacobian.jl")
 

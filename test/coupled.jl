@@ -10,7 +10,7 @@ function σ_cst(X, time::T) where {T<:Real}
 end
 
 function τ_cst(X, time::T) where {T<:Real}
-  return 1.0
+  return -1.0
 end
 
 function DD_analytical(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
@@ -20,7 +20,7 @@ function DD_analytical(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
 end
 
 @testset "Coupled problems" begin
-    @testset "fake coupling" begin
+    @testset "Fake coupling" begin
         # Create mesh
         start_point = SVector(-1.0, 0.0)
         end_point = SVector(1.0, 0.0)
