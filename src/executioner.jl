@@ -107,7 +107,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::
         advanceTime!(exec, time_stepper)
 
         # Save old state
-        # @timeit timer "Reinitialize problem" reinit!(problem, time_stepper)
+        @timeit timer "Reinitialize problem" reinit!(problem)
 
         # Print time step information
         if log

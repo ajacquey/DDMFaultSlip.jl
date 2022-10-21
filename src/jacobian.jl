@@ -195,6 +195,137 @@ function reinitLocalJacobian!(J::CoupledDDJacobian2D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc_δ[2], 0.0)
 end
 
+mutable struct CoupledDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+    " Normal collocation matrix"
+    En::HMatrix{R,T}
+    " Shear collocation matrices"
+    Esxx::HMatrix{R,T}
+    Esyy::HMatrix{R,T}
+    Esxy::HMatrix{R,T}
+
+    " Local jacobian"
+    jac_loc_ϵ::Vector{Vector{T}}
+    jac_loc_δx::Vector{Vector{T}}
+    jac_loc_δy::Vector{Vector{T}}
+
+    " Constructor"
+    function CoupledDDJacobian3D(problem::CoupledDDProblem3D{T}; eta::T = 2.0, atol::T = 1.0e-06) where {T<:Real}
+        # Create H-matrix
+        Kn = DD3DNormalElasticMatrix(problem.mesh.elems, problem.μ, problem.ν)
+        Ksxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
+        Ksyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
+        Ksxy = DD3DShearElasticMatrixXY(problem.mesh.elems, problem.μ, problem.ν)
+        # Cluster tree
+        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(K.e)])
+        # Admissibility
+        adm = StrongAdmissibilityStd(; eta = eta)
+        # Compatibility
+        comp = PartialACA(; atol = atol)
+        # Assemble H-matrix
+        En = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Esxx = assemble_hmat(Ksxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Esyy = assemble_hmat(Ksyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Esxy = assemble_hmat(Ksxy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+
+        # Local jacobian
+        jac_loc_ϵ = Vector{Vector{T}}(undef, 3)
+        jac_loc_ϵ[1] = zeros(T, size(En, 1))
+        jac_loc_ϵ[2] = zeros(T, size(En, 1))
+        jac_loc_ϵ[3] = zeros(T, size(En, 1))
+        jac_loc_δx = Vector{Vector{T}}(undef, 3)
+        jac_loc_δx[1] = zeros(T, size(En, 1))
+        jac_loc_δx[2] = zeros(T, size(En, 1))
+        jac_loc_δx[3] = zeros(T, size(En, 1))
+        jac_loc_δy = Vector{Vector{T}}(undef, 3)
+        jac_loc_δy[1] = zeros(T, size(En, 1))
+        jac_loc_δy[2] = zeros(T, size(En, 1))
+        jac_loc_δy[3] = zeros(T, size(En, 1))
+
+        R = typeof(En.coltree)
+        return new{R,T}(En, Esxx, Esyy, Esxy, jac_loc_ϵ, jac_loc_δx, jac_loc_δy)
+    end
+end
+
+function Base.size(J::CoupledDDJacobian3D{R,T}) where {R,T<:Real}
+    return size(J.En, 1) + size(J.Esxx, 1) + size(J.Esyy, 1), size(J.En, 1) + size(J.Esxx, 1) + size(J.Esyy, 1)
+end
+
+function reinitLocalJacobian!(J::CoupledDDJacobian3D{R,T}) where {R,T<:Real}
+    fill!(J.jac_loc_ϵ[1], 0.0)
+    fill!(J.jac_loc_ϵ[2], 0.0)
+    fill!(J.jac_loc_ϵ[3], 0.0)
+    fill!(J.jac_loc_δx[1], 0.0)
+    fill!(J.jac_loc_δx[2], 0.0)
+    fill!(J.jac_loc_δx[3], 0.0)
+    fill!(J.jac_loc_δy[1], 0.0)
+    fill!(J.jac_loc_δy[2], 0.0)
+    fill!(J.jac_loc_δy[3], 0.0)
+end
+
+mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+    " Normal collocation matrix"
+    En::HMatrix{R,T}
+    " Shear collocation matrices"
+    Esxx::HMatrix{R,T}
+    Esyy::HMatrix{R,T}
+
+    " Local jacobian"
+    jac_loc_ϵ::Vector{Vector{T}}
+    jac_loc_δx::Vector{Vector{T}}
+    jac_loc_δy::Vector{Vector{T}}
+
+    " Constructor"
+    function CoupledNoNuDDJacobian3D(problem::CoupledDDProblem3D{T}; eta::T = 2.0, atol::T = 1.0e-06) where {T<:Real}
+        # Create H-matrix
+        Kn = DD3DNormalElasticMatrix(problem.mesh.elems, problem.μ, problem.ν)
+        Ksxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
+        Ksyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
+        # Cluster tree
+        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(K.e)])
+        # Admissibility
+        adm = StrongAdmissibilityStd(; eta = eta)
+        # Compatibility
+        comp = PartialACA(; atol = atol)
+        # Assemble H-matrix
+        En = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Esxx = assemble_hmat(Ksxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Esyy = assemble_hmat(Ksyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+
+        # Local jacobian
+        jac_loc_ϵ = Vector{Vector{T}}(undef, 3)
+        jac_loc_ϵ[1] = zeros(T, size(En, 1))
+        jac_loc_ϵ[2] = zeros(T, size(En, 1))
+        jac_loc_ϵ[3] = zeros(T, size(En, 1))
+        jac_loc_δx = Vector{Vector{T}}(undef, 3)
+        jac_loc_δx[1] = zeros(T, size(En, 1))
+        jac_loc_δx[2] = zeros(T, size(En, 1))
+        jac_loc_δx[3] = zeros(T, size(En, 1))
+        jac_loc_δy = Vector{Vector{T}}(undef, 3)
+        jac_loc_δy[1] = zeros(T, size(En, 1))
+        jac_loc_δy[2] = zeros(T, size(En, 1))
+        jac_loc_δy[3] = zeros(T, size(En, 1))
+
+        R = typeof(En.coltree)
+        return new{R,T}(En, Esxx, Esyy, jac_loc_ϵ, jac_loc_δx, jac_loc_δy)
+    end
+end
+
+function Base.size(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
+    return size(J.En, 1) + size(J.Esxx, 1) + size(J.Esyy, 1), size(J.En, 1) + size(J.Esxx, 1) + size(J.Esyy, 1)
+end
+
+function reinitLocalJacobian!(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
+    fill!(J.jac_loc_ϵ[1], 0.0)
+    fill!(J.jac_loc_ϵ[2], 0.0)
+    fill!(J.jac_loc_ϵ[3], 0.0)
+    fill!(J.jac_loc_δx[1], 0.0)
+    fill!(J.jac_loc_δx[2], 0.0)
+    fill!(J.jac_loc_δx[3], 0.0)
+    fill!(J.jac_loc_δy[1], 0.0)
+    fill!(J.jac_loc_δy[2], 0.0)
+    fill!(J.jac_loc_δy[3], 0.0)
+end
+
 function Base.size(J::DDJacobian{R,T}, d::Integer) where {R,T<:Real}
     if d < 1 || d > 2
         throw(ArgumentError("dimension d must be ≥ 1 and ≤ 2, got $d"))

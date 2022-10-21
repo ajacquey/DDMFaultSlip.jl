@@ -62,6 +62,19 @@ mutable struct DDSolver{R,T<:Real}
         R = typeof(mat.E.coltree)
         return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
     end
+
+    " Constructor for CoupledDDProblem3D"
+    function DDSolver(problem::CoupledDDProblem3D{T}; hmat_eta::T = 3.0, hmat_atol::T = 0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+        if (problem.ν != 0.0)
+            mat = CoupledDDJacobian3D(problem; eta = hmat_eta, atol = hmat_atol)
+        else
+            mat = CoupledNoNuDDJacobian3D(problem; eta = hmat_eta, atol = hmat_atol)
+        end
+        n_dof = size(mat, 1)
+
+        R = typeof(mat.Esxx.coltree)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+    end
 end
 
 function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}

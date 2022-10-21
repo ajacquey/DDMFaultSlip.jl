@@ -87,7 +87,7 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Co
     if hasFrictionConstraint(problem)
         n = size(solver.mat.E, 1)
         Threads.@threads for idx in 1:length(problem.mesh.elems)
-            ((rϵ, rδ), (jϵϵ, jϵδ, jδϵ, jδδ)) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx], problem.δ.value[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
+            ((rϵ, rδ), (jϵϵ, jϵδ, jδϵ, jδδ)) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
 
             solver.rhs[idx] -= rϵ
             solver.rhs[n + idx] -= rδ
@@ -147,7 +147,7 @@ function update!(problem::CoupledDDProblem2D{T}, solver::DDSolver{R,T}) where {R
     problem.τ.value = problem.τ.value_old + collocation_mul(solver.mat, solver.solution, 1)
     # Fluid coupling
     if hasFluidCoupling(problem)
-        problem.σ.value -= problem.fluid_coupling[1].p + problem.fluid_coupling[1].p_old
+        problem.σ.value -= (problem.fluid_coupling[1].p - problem.fluid_coupling[1].p_old)
     end
 
     return nothing
