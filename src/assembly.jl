@@ -87,14 +87,14 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Co
     if hasFrictionConstraint(problem)
         n = size(solver.mat.E, 1)
         Threads.@threads for idx in 1:length(problem.mesh.elems)
-            ((rϵ, rδ), (jϵϵ, jϵδ, jδϵ, jδδ)) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
+            (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
 
-            solver.rhs[idx] -= rϵ
-            solver.rhs[n + idx] -= rδ
-            solver.mat.jac_loc_ϵ[1][idx] -= jϵϵ
-            solver.mat.jac_loc_ϵ[2][idx] -= jϵδ
-            solver.mat.jac_loc_δ[1][idx] -= jδϵ
-            solver.mat.jac_loc_δ[2][idx] -= jδδ
+            solver.rhs[idx] -= Res[1]
+            solver.rhs[n + idx] -= Res[2]
+            solver.mat.jac_loc_ϵ[1][idx] -= Jac[1,1]
+            solver.mat.jac_loc_ϵ[2][idx] -= Jac[2,1]
+            solver.mat.jac_loc_δ[1][idx] -= Jac[1,2]
+            solver.mat.jac_loc_δ[2][idx] -= Jac[2,2]
         end
     end
 
