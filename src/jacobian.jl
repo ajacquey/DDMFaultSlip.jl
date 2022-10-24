@@ -281,13 +281,13 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
         Ksxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
         Ksyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
         # Cluster tree
-        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(K.e)])
+        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(Kn.e)])
         # Admissibility
         adm = StrongAdmissibilityStd(; eta = eta)
         # Compatibility
         comp = PartialACA(; atol = atol)
         # Assemble H-matrix
-        En = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        En = assemble_hmat(Kn, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esxx = assemble_hmat(Ksxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esyy = assemble_hmat(Ksyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
@@ -360,8 +360,8 @@ function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian2D{R,T}, x::Abs
     return y
 end
 
-" mul! function for ShearDDJacobian3D"
-function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
+" mul! function for ShearNoNuDDJacobian3D"
+function LinearAlgebra.mul!(y::AbstractVector, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
     
     # Hmatrix multiplication
@@ -373,8 +373,9 @@ function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian3D{R,T}, x::Abs
     return y
 end
 
-" mul! function for ShearNoNuDDJacobian3D"
-function LinearAlgebra.mul!(y::AbstractVector, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
+
+" mul! function for ShearDDJacobian3D"
+function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
     
     # Hmatrix multiplication
@@ -398,6 +399,39 @@ function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian2D{R,T}, x::A
     y .+= vcat(J.jac_loc_ϵ[1], J.jac_loc_δ[2]) .* x
     y[1:n] .+= J.jac_loc_ϵ[2] .* x[(n+1):(2*n)]
     y[(n+1):(2*n)] .+= J.jac_loc_δ[1] .* x[1:n]
+    
+    return y
+end
+
+" mul! function for CoupledNoNuDDJacobian3D"
+function LinearAlgebra.mul!(y::AbstractVector, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+    
+    # Hmatrix multiplication
+    collocation_mul!(y, J, x)
+
+    # Add local jacobian contributions
+    n = div(length(x), 3)
+    y .+= vcat(J.jac_loc_ϵ[1], J.jac_loc_δx[2], J.jac_loc_δy[3]) .* x
+    y[1:n] .+= J.jac_loc_ϵ[2] .* x[(n+1):(2*n)] .+ J.jac_loc_ϵ[3] .* x[(2*n+1):(3*n)]
+    y[(n+1):(2*n)] .+= J.jac_loc_δx[1] .* x[1:n] .+ J.jac_loc_δx[3] .* x[(2*n+1):(3*n)]
+    y[(2*n+1):(3*n)] .+= J.jac_loc_δy[1] .* x[1:n] .+ J.jac_loc_δy[2] .* x[(n+1):(2*n)]
+    
+    return y
+end
+" mul! function for CoupledNoNuDDJacobian2D"
+function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+    
+    # Hmatrix multiplication
+    collocation_mul!(y, J, x)
+
+    # Add local jacobian contributions
+    n = div(length(x), 3)
+    y .+= vcat(J.jac_loc_ϵ[1], J.jac_loc_δx[2], J.jac_loc_δy[3]) .* x
+    y[1:n] .+= J.jac_loc_ϵ[2] .* x[(n+1):(2*n)] .+ J.jac_loc_ε[3] .* x[(2*n+1):(3*n)]
+    y[(n+1):(2*n)] .+= J.jac_loc_δx[1] .* x[1:n] .+ J.jac_loc_δx[3] .* x[(2*n+1):(3*n)]
+    y[(2*n+1):(3*n)] .+= J.jac_loc_δy[1] .* x[1:n] .+ J.jac_loc_δy[2] .* x[(n+1):(2*n)]
     
     return y
 end
@@ -443,6 +477,29 @@ function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian2D{R,T}, x::
     return y
 end
 
+" collocation_mul! function for CoupledNoNuDDJacobian3D"
+function collocation_mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+    n = size(J.En, 1)
+
+    y[1:n] = J.En * x[1:n]
+    y[n+1:2*n] = J.Esxx * x[n+1:2*n]
+    y[2*n+1:3*n] = J.Esyy * x[2*n+1:3*n]
+
+    return y
+end
+
+" collocation_mul! function for CoupledDDJacobian3D"
+function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+    n = size(J.En, 1)
+
+    y[1:n] = J.En * x[1:n]
+    y[n+1:2*n] = J.Esxx * x[n+1:2*n] + J.Esxy * x[2*n+1:3*n]
+    y[2*n+1:3*n] = J.Esxy * x[n+1:2*n] + J.Esyy * x[2*n+1:3*n]
+
+    return y
+end
+
+
 " collocation_mul! function for ShearDDJacobian3D"
 function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
     n = size(J.Esxx, 1)
@@ -477,6 +534,36 @@ function collocation_mul(J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}, d::I
         return J.E * x[1:n]
     elseif (d == 1)
         return J.E * x[n+1:2*n]
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end
+
+" collocation_mul! function for CoupledNoNuDDJacobian3D"
+function collocation_mul(J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
+    n = size(J.En, 1)
+
+    if (d == 0)
+        return J.En * x[1:n]
+    elseif (d == 1)
+        return J.Esxx * x[n+1:2*n]
+    elseif (d == 2)
+        return J.Esyy * x[2*n+1:3*n]
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end
+
+" collocation_mul! function for CoupledDDJacobian3D"
+function collocation_mul(J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
+    n = size(J.En, 1)
+
+    if (d == 0)
+        return J.En * x[1:n]
+    elseif (d == 1)
+        return J.Esxx * x[n+1:2*n] + J.Esxy * x[2*n+1:3*n]
+    elseif (d == 2)
+        return J.Esxy * x[n+1:2*n] + J.Esyy * x[2*n+1:3*n]
     else
         throw(ErrorException("Wrong dimension!"))
     end

@@ -176,7 +176,7 @@ mutable struct CoupledDDProblem3D{T<:Real} <: AbstractDDProblem{T}
 
     " Incomplete constructor"
     function CoupledDDProblem3D(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ_x, length(mesh.elems)), Variable(T, δ_y, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ_x,length(mesh.elems)), AuxVariable(T, :τ_y, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
+        return new{T}(mesh, μ, ν, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ_x, length(mesh.elems)), Variable(T, :δ_y, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ_x, length(mesh.elems)), AuxVariable(T, :τ_y, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
     end
 end
 

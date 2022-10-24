@@ -115,7 +115,7 @@ struct DD3DShearElasticMatrixXX{T<:Real} <: ElasticKernelMatrix{T}
 end
 
 function Base.getindex(K::DD3DShearElasticMatrixXX, i::Int, j::Int)
-    return -K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j]))
+    return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j]))
 end
 
 function Base.size(K::DD3DShearElasticMatrixXX)
@@ -132,7 +132,7 @@ struct DD3DShearElasticMatrixYY{T<:Real} <: ElasticKernelMatrix{T}
 end
 
 function Base.getindex(K::DD3DShearElasticMatrixYY, i::Int, j::Int)
-    return -K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI025(K.e[i], K.e[j]))
+    return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI025(K.e[i], K.e[j]))
 end
 
 function Base.size(K::DD3DShearElasticMatrixYY)
@@ -149,7 +149,7 @@ struct DD3DShearElasticMatrixXY{T<:Real} <: ElasticKernelMatrix{T}
 end
 
 function Base.getindex(K::DD3DShearElasticMatrixXY, i::Int, j::Int)
-    return -K.μ / (4 * π * (1.0 - K.ν)) * 3.0 * K.ν * integralI115(K.e[i], K.e[j])
+    return K.μ / (4 * π * (1.0 - K.ν)) * 3.0 * K.ν * integralI115(K.e[i], K.e[j])
 end
 
 function Base.size(K::DD3DShearElasticMatrixXY)

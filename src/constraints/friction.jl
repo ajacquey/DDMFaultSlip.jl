@@ -123,8 +123,9 @@ function computePlasticDDDerivative(cst::AbstractFriction{T}, t_tr::SVector{2,T}
     df_dt = yieldFunctionStressDerivative(cst, σ_tr, τ_tr, Δp)
     df_dp = yieldFunctionDerivative(cst, σ_tr, τ_tr, Δp)
     r = plasticFlowDirection(cst, t_tr)
+    dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
     if Δp > 0.0
-        return SMatrix{2}(-r[1] * cst.kₙ * df_dt[1] / df_dp, -r[1] * cst.kₛ * df_dt[2] / df_dp, -r[2] * cst.kₙ * df_dt[1] / df_dp, -r[2] * cst.kₛ * df_dt[2] / df_dp)
+        return SMatrix{2}(-cst.kₙ * df_dt[1] / df_dp * r[1] + Δp *dr_dΔu[1,1], -cst.kₛ * df_dt[2] / df_dp * r[1] + Δp * dr_dΔu[2,1], -cst.kₙ * df_dt[1] / df_dp * r[2] + Δp * dr_dΔu[1,2], -cst.kₛ * df_dt[2] / df_dp * r[2] + Δp * dr_dΔu[2,2])
     else
         return SMatrix{2}(0.0, 0.0, 0.0, 0.0)
     end
@@ -136,14 +137,13 @@ function computePlasticDDDerivative(cst::AbstractFriction{T}, t_tr::SVector{3,T}
     df_dp = yieldFunctionDerivative(cst, σ_tr, τ_tr, Δp)
     r = plasticFlowDirection(cst, t_tr)
     dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
-    # TO IMPLEMENT
-    # if Δp > 0.0
-    #     return SMatrix{3}(-r[1] * cst.kₙ * df_dt[1] / df_dp, -r[1] * cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr, -r[1] * cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr
-    #         -r[2] * cst.kₙ * df_dt[1] / df_dp, Δp * cst.kₛ,
-    #         -r[2] * cst.kₙ * df_dt[1] / df_dp, ,)
-    # else
-    #     return SMatrix{3}(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    # end
+    if Δp > 0.0
+        return SMatrix{3}(-cst.kₙ * df_dt[1] / df_dp * r[1] + Δp * dr_dΔu[1,1], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[1] + Δp * dr_dΔu[2,1], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[1] + Δp * dr_dΔu[3,1],
+            -cst.kₙ * df_dt[1] / df_dp * r[2] + Δp * dr_dΔu[1,2], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[2] + Δp * dr_dΔu[2,2], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[2] + Δp * dr_dΔu[3,2],  
+            -cst.kₙ * df_dt[1] / df_dp * r[3] + Δp * dr_dΔu[1,3], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[3] + Δp * dr_dΔu[2,3], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[3] + Δp * dr_dΔu[3,3])
+    else
+        return SMatrix{3}(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    end
 end
 
 # Default residual and jacobian (plasticity)
@@ -257,10 +257,9 @@ function yieldFunctionStressDerivative(cst::ConstantFriction{T}, σ_tr::T, τ_tr
 end
 
 function reformPlasticDD(cst::ConstantFriction{T}, Δp::T, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
-    return SVector(-cst.ζ * Δp, Δp)
+    return Δp * plasticFlowDirection(cst, t_tr)
 end
 
 function reformPlasticDD(cst::ConstantFriction{T}, Δp::T, t_tr::SVector{3,T})::SVector{3,T} where {T<:Real}
-    (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-    return SVector(-cst.ζ * Δp, Δp * t_tr[2] / τ_tr, Δp * t_tr[3] / τ_tr)
+    return Δp * plasticFlowDirection(cst, t_tr)
 end
