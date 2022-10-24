@@ -291,7 +291,7 @@ end
         
         # Analytical solutions (would need to add 3D slip)
         ϵ_sol = ϵ_analytical_3D(mesh, time_seq[end])
-        err = mean(abs((ϵ - ϵ_sol) ./ ϵ_sol))
+        err = mean(abs((problem.ϵ.value - ϵ_sol) ./ ϵ_sol))
         # Error less than 2%
         @test err < 0.02
     end
@@ -333,7 +333,7 @@ end
         
         # Analytical solutions (would need to add 3D slip)
         ϵ_sol = ϵ_analytical_3D(mesh, time_seq[end])
-        err = mean(abs((ϵ - ϵ_sol) ./ ϵ_sol))
+        err = mean(abs((problem.ϵ.value - ϵ_sol) ./ ϵ_sol))
         # Error less than 2%
         @test err < 0.02
     end
