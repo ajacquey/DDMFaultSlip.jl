@@ -26,11 +26,11 @@ function σ₀(X)
     return 1.0
 end
 
-function p_func_2D(X::SVector{2, T}, time::T)::T where {T<:Real}
+function p_func_2D(X::SVector{2,T}, time::T)::T where {T<:Real}
     return Δp * erfc(abs(X[1]) / sqrt(α * time))
 end
 
-function p_func_3D(X::SVector{3, T}, time::T)::T where {T<:Real}
+function p_func_3D(X::SVector{3,T}, time::T)::T where {T<:Real}
     return Δpᵢ * expint(1, norm(X)^2 / (α * time))
 end
 
@@ -73,9 +73,9 @@ end
             itp = linear_interpolation(x_a * a, δ_a * a * f * Δp / μ) # create interpolation function
 
             # Outside of rupture front = 0
-            δ[abs.(x) .>= a] .= 0.0
+            δ[abs.(x).>=a] .= 0.0
             # Inside, interpolate
-            δ[abs.(x) .< a] = itp(x[abs.(x) .< a])
+            δ[abs.(x).<a] = itp(x[abs.(x).<a])
             return δ
         end
 
@@ -89,7 +89,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ = μ)
+        problem = CoupledDDProblem2D(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -102,11 +102,11 @@ end
         addFrictionConstraint!(problem, ConstantFriction(f, kₙ, kₛ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop = 10.0, length = 20))
-        time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 20.0)
+        time_seq = collect(range(0.5, stop=10.0, length=20))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=20.0)
 
         # Run problem
-        run!(problem, time_stepper; log = false)
+        run!(problem, time_stepper; log=false)
 
         # Analytical solutions
         ϵ_sol = ϵ_analytical_2D(mesh, time_seq[end])
@@ -141,9 +141,9 @@ end
             itp = linear_interpolation(x_a * a, δ_a * a * f * Δp / μ) # create interpolation function
 
             # Outside of rupture front = 0
-            δ[abs.(x) .>= a] .= 0.0
+            δ[abs.(x).>=a] .= 0.0
             # Inside, interpolate
-            δ[abs.(x) .< a] = itp(x[abs.(x) .< a])
+            δ[abs.(x).<a] = itp(x[abs.(x).<a])
             return δ
         end
 
@@ -157,7 +157,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ = μ)
+        problem = CoupledDDProblem2D(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -170,11 +170,11 @@ end
         addFrictionConstraint!(problem, ConstantFriction(f, kₙ, kₛ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop = 10.0, length = 20))
-        time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 20.0)
+        time_seq = collect(range(0.5, stop=10.0, length=20))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=20.0)
 
         # Run problem
-        run!(problem, time_stepper; log = false)
+        run!(problem, time_stepper; log=false)
 
         # Analytical solutions
         ϵ_sol = ϵ_analytical_2D(mesh, time_seq[end])
@@ -209,9 +209,9 @@ end
             itp = linear_interpolation(x_a * a, δ_a * a * f * Δp / μ) # create interpolation function
 
             # Outside of rupture front = 0
-            δ[abs.(x) .>= a] .= 0.0
+            δ[abs.(x).>=a] .= 0.0
             # Inside, interpolate
-            δ[abs.(x) .< a] = itp(x[abs.(x) .< a])
+            δ[abs.(x).<a] = itp(x[abs.(x).<a])
             return δ
         end
 
@@ -225,7 +225,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ = μ)
+        problem = CoupledDDProblem2D(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -238,11 +238,11 @@ end
         addFrictionConstraint!(problem, ConstantFriction(f, kₙ, kₛ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop = 10.0, length = 20))
-        time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 20.0)
+        time_seq = collect(range(0.5, stop=10.0, length=20))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=20.0)
 
         # Run problem
-        run!(problem, time_stepper; log = false)
+        run!(problem, time_stepper; log=false)
 
         # Analytical solutions
         ϵ_sol = ϵ_analytical_2D(mesh, time_seq[end])
@@ -285,10 +285,10 @@ end
 
     #     time_seq = collect(range(0.0, stop = 0.5, length = 21))
     #     time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 0.5)
-        
+
     #     # Run problem
     #     run!(problem, time_stepper, log = false)
-        
+
     #     # Analytical solutions (would need to add 3D slip)
     #     ϵ_sol = ϵ_analytical_3D(mesh, time_seq[end])
     #     err = mean(abs.((problem.ϵ.value - ϵ_sol) ./ ϵ_sol))
@@ -313,7 +313,7 @@ end
         ν = 0.0
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ = μ, ν = ν)
+        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
 
         # ICs
         addNormalStressIC!(problem, σ₀)
@@ -325,12 +325,12 @@ end
         # Constant yield (dummy plastic model)
         addFrictionConstraint!(problem, ConstantFriction(f, kₛ, kₙ))
 
-        time_seq = collect(range(0.0, stop = 5.0, length = 21))
-        time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 5.0)
-        
+        time_seq = collect(range(0.0, stop=5.0, length=21))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=5.0)
+
         # Run problem
-        run!(problem, time_stepper, log = false)
-        
+        run!(problem, time_stepper, log=false)
+
         # Analytical solutions (would need to add 3D slip)
         ϵ_sol = ϵ_analytical_3D(mesh, time_seq[end])
         err = mean(abs.((problem.ϵ.value - ϵ_sol) ./ ϵ_sol))

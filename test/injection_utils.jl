@@ -15,7 +15,7 @@ Outputs:
     δ: the slip distribution
     λ: the slip to fluid migration factor
 """
-function injection_analytical_gs(T::Float64, N::Int64 = 100)
+function injection_analytical_gs(T::Float64, N::Int64=100)
     # Solve for λ
     λ = lambda_analytical_gs(T, N)
 
@@ -47,9 +47,9 @@ Outputs:
 function lambda_analytical_gs(
     T::Float64,
     N::Int64,
-    max_iters::Int64 = 200,
-    abs_tol::Float64 = 1.0e-10,
-    debug::Bool = false,
+    max_iters::Int64=200,
+    abs_tol::Float64=1.0e-10,
+    debug::Bool=false,
 )
     # Initialization
     λ = 1.0
@@ -158,7 +158,7 @@ Outputs
     
 """
 function slip_distribution_gs(λ::Float64, N::Int64)
-    x = collect(range(-1.0, 1.0, length = N))
+    x = collect(range(-1.0, 1.0, length=N))
 
     δ = similar(x)
     slip_gs!(δ, x, N, λ)

@@ -125,7 +125,7 @@ function computePlasticDDDerivative(cst::AbstractFriction{T}, t_tr::SVector{2,T}
     r = plasticFlowDirection(cst, t_tr)
     dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
     if Δp > 0.0
-        return SMatrix{2}(-cst.kₙ * df_dt[1] / df_dp * r[1] + Δp *dr_dΔu[1,1], -cst.kₛ * df_dt[2] / df_dp * r[1] + Δp * dr_dΔu[2,1], -cst.kₙ * df_dt[1] / df_dp * r[2] + Δp * dr_dΔu[1,2], -cst.kₛ * df_dt[2] / df_dp * r[2] + Δp * dr_dΔu[2,2])
+        return SMatrix{2}(-cst.kₙ * df_dt[1] / df_dp * r[1] + Δp * dr_dΔu[1, 1], -cst.kₛ * df_dt[2] / df_dp * r[1] + Δp * dr_dΔu[2, 1], -cst.kₙ * df_dt[1] / df_dp * r[2] + Δp * dr_dΔu[1, 2], -cst.kₛ * df_dt[2] / df_dp * r[2] + Δp * dr_dΔu[2, 2])
     else
         return SMatrix{2}(0.0, 0.0, 0.0, 0.0)
     end
@@ -138,9 +138,9 @@ function computePlasticDDDerivative(cst::AbstractFriction{T}, t_tr::SVector{3,T}
     r = plasticFlowDirection(cst, t_tr)
     dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
     if Δp > 0.0
-        return SMatrix{3}(-cst.kₙ * df_dt[1] / df_dp * r[1] + Δp * dr_dΔu[1,1], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[1] + Δp * dr_dΔu[2,1], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[1] + Δp * dr_dΔu[3,1],
-            -cst.kₙ * df_dt[1] / df_dp * r[2] + Δp * dr_dΔu[1,2], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[2] + Δp * dr_dΔu[2,2], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[2] + Δp * dr_dΔu[3,2],  
-            -cst.kₙ * df_dt[1] / df_dp * r[3] + Δp * dr_dΔu[1,3], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[3] + Δp * dr_dΔu[2,3], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[3] + Δp * dr_dΔu[3,3])
+        return SMatrix{3}(-cst.kₙ * df_dt[1] / df_dp * r[1] + Δp * dr_dΔu[1, 1], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[1] + Δp * dr_dΔu[2, 1], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[1] + Δp * dr_dΔu[3, 1],
+            -cst.kₙ * df_dt[1] / df_dp * r[2] + Δp * dr_dΔu[1, 2], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[2] + Δp * dr_dΔu[2, 2], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[2] + Δp * dr_dΔu[3, 2],
+            -cst.kₙ * df_dt[1] / df_dp * r[3] + Δp * dr_dΔu[1, 3], -cst.kₛ * df_dt[2] / df_dp * t_tr[2] / τ_tr * r[3] + Δp * dr_dΔu[2, 3], -cst.kₛ * df_dt[2] / df_dp * t_tr[3] / τ_tr * r[3] + Δp * dr_dΔu[3, 3])
     else
         return SMatrix{3}(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     end
@@ -235,11 +235,11 @@ struct ConstantFriction{T<:Real} <: AbstractFriction{T}
     end
 end
 
-function plasticFlowDirection(cst::ConstantFriction{T}, t_tr::SVector{2, T}) where {T<:Real}
+function plasticFlowDirection(cst::ConstantFriction{T}, t_tr::SVector{2,T}) where {T<:Real}
     return SVector(-cst.ζ, 1.0)
 end
 
-function plasticFlowDirection(cst::ConstantFriction{T}, t_tr::SVector{3, T}) where {T<:Real}
+function plasticFlowDirection(cst::ConstantFriction{T}, t_tr::SVector{3,T}) where {T<:Real}
     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
     return SVector(-cst.ζ, t_tr[2] / τ_tr, t_tr[3] / τ_tr)
 end

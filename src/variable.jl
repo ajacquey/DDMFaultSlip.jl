@@ -12,7 +12,7 @@ mutable struct Variable{T<:Real} <: AbstractVariable{T}
 
     " The function describing the initial conditions"
     func_ic::Function
-    
+
     " Constructor"
     function Variable(T::Type, sym::Symbol, n::Int)
         return new{T}(zeros(T, n), zeros(T, n), sym, default_ic)

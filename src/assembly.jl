@@ -1,6 +1,6 @@
 function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput) where {R,T<:Real}
     # Reset local jacobian
-    @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step = false)
+    @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step=false)
 
     @timeit timer "Assembly" begin
         # Residuals = collocation stress - imposed stress
@@ -45,7 +45,7 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
         end
 
         for cst in problem.constraints_y
-            @inbounds (solver.rhs[n + idx], solver.mat.jac_loc_y[idx]) = (solver.rhs[n + idx], solver.mat.jac_loc_y[idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+            @inbounds (solver.rhs[n+idx], solver.mat.jac_loc_y[idx]) = (solver.rhs[n+idx], solver.mat.jac_loc_y[idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
         end
     end
     return nothing
@@ -60,7 +60,7 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
         end
 
         for cst in problem.constraints_δ
-            @inbounds (solver.rhs[n + idx], solver.mat.jac_loc_δ[2][idx]) = (solver.rhs[n + idx], solver.mat.jac_loc_δ[2][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+            @inbounds (solver.rhs[n+idx], solver.mat.jac_loc_δ[2][idx]) = (solver.rhs[n+idx], solver.mat.jac_loc_δ[2][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
         end
     end
 
@@ -76,11 +76,11 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
         end
 
         for cst in problem.constraints_δx
-            @inbounds (solver.rhs[n + idx], solver.mat.jac_loc_δx[2][idx]) = (solver.rhs[n + idx], solver.mat.jac_loc_δx[2][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+            @inbounds (solver.rhs[n+idx], solver.mat.jac_loc_δx[2][idx]) = (solver.rhs[n+idx], solver.mat.jac_loc_δx[2][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
         end
 
         for cst in problem.constraints_δy
-            @inbounds (solver.rhs[2*n + idx], solver.mat.jac_loc_δy[3][idx]) = (solver.rhs[2*n + idx], solver.mat.jac_loc_δx[3][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
+            @inbounds (solver.rhs[2*n+idx], solver.mat.jac_loc_δy[3][idx]) = (solver.rhs[2*n+idx], solver.mat.jac_loc_δx[3][idx]) .- computeConstraints(cst, 0.0, problem.mesh.elems[idx].X)
         end
     end
 
@@ -88,8 +88,8 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
 end
 
 function assembleFluidCouplingResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}) where {R,T<:Real}
-   # Check if problem has fluid coupling
-   if hasFluidCoupling(problem)
+    # Check if problem has fluid coupling
+    if hasFluidCoupling(problem)
         Threads.@threads for idx in eachindex(problem.mesh.elems)
             @inbounds solver.rhs[idx] -= problem.fluid_coupling[1].p[idx] - problem.fluid_coupling[1].p_old[idx]
         end
@@ -110,11 +110,11 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Co
             @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
 
             @inbounds solver.rhs[idx] -= Res[1]
-            @inbounds solver.rhs[n + idx] -= Res[2]
-            @inbounds solver.mat.jac_loc_ϵ[1][idx] -= Jac[1,1]
-            @inbounds solver.mat.jac_loc_ϵ[2][idx] -= Jac[2,1]
-            @inbounds solver.mat.jac_loc_δ[1][idx] -= Jac[1,2]
-            @inbounds solver.mat.jac_loc_δ[2][idx] -= Jac[2,2]
+            @inbounds solver.rhs[n+idx] -= Res[2]
+            @inbounds solver.mat.jac_loc_ϵ[1][idx] -= Jac[1, 1]
+            @inbounds solver.mat.jac_loc_ϵ[2][idx] -= Jac[2, 1]
+            @inbounds solver.mat.jac_loc_δ[1][idx] -= Jac[1, 2]
+            @inbounds solver.mat.jac_loc_δ[2][idx] -= Jac[2, 2]
         end
     end
 
@@ -129,17 +129,17 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Co
             @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ_x.value[idx] - problem.δ_x.value_old[idx], problem.δ_y.value[idx] - problem.δ_y.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ_x.value_old[idx], problem.τ_y.value_old[idx]))
 
             @inbounds solver.rhs[idx] -= Res[1]
-            @inbounds solver.rhs[n + idx] -= Res[2]
-            @inbounds solver.rhs[2*n + idx] -= Res[3]
-            @inbounds solver.mat.jac_loc_ϵ[1][idx] -= Jac[1,1]
-            @inbounds solver.mat.jac_loc_ϵ[2][idx] -= Jac[2,1]
-            @inbounds solver.mat.jac_loc_ϵ[3][idx] -= Jac[3,1]
-            @inbounds solver.mat.jac_loc_δx[1][idx] -= Jac[1,2]
-            @inbounds solver.mat.jac_loc_δx[2][idx] -= Jac[2,2]
-            @inbounds solver.mat.jac_loc_δx[3][idx] -= Jac[3,2]
-            @inbounds solver.mat.jac_loc_δy[1][idx] -= Jac[1,3]
-            @inbounds solver.mat.jac_loc_δy[2][idx] -= Jac[2,3]
-            @inbounds solver.mat.jac_loc_δy[3][idx] -= Jac[3,3]
+            @inbounds solver.rhs[n+idx] -= Res[2]
+            @inbounds solver.rhs[2*n+idx] -= Res[3]
+            @inbounds solver.mat.jac_loc_ϵ[1][idx] -= Jac[1, 1]
+            @inbounds solver.mat.jac_loc_ϵ[2][idx] -= Jac[2, 1]
+            @inbounds solver.mat.jac_loc_ϵ[3][idx] -= Jac[3, 1]
+            @inbounds solver.mat.jac_loc_δx[1][idx] -= Jac[1, 2]
+            @inbounds solver.mat.jac_loc_δx[2][idx] -= Jac[2, 2]
+            @inbounds solver.mat.jac_loc_δx[3][idx] -= Jac[3, 2]
+            @inbounds solver.mat.jac_loc_δy[1][idx] -= Jac[1, 3]
+            @inbounds solver.mat.jac_loc_δy[2][idx] -= Jac[2, 3]
+            @inbounds solver.mat.jac_loc_δy[3][idx] -= Jac[3, 3]
         end
     end
 
@@ -227,6 +227,6 @@ function computePressureCoupling!(problem::AbstractDDProblem{T}, time::T, timer:
             end
         end
     end
-    
+
     return nothing
 end

@@ -1,9 +1,9 @@
-function run!(problem::AbstractDDProblem{T}; log::Bool = true, linear_log::Bool = false, nl_max_it::Int64 = 100, nl_abs_tol::T = 1.0e-10, nl_rel_tol::T = 1.0e-10) where {T<:Real}
+function run!(problem::AbstractDDProblem{T}; log::Bool=true, linear_log::Bool=false, nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10) where {T<:Real}
     # Timer
     timer = TimerOutput()
-    
+
     # Initialize solver
-    @timeit timer "Initialize Solver" solver = DDSolver(problem; nl_max_it = nl_max_it, nl_abs_tol = nl_abs_tol, nl_rel_tol = nl_rel_tol)
+    @timeit timer "Initialize Solver" solver = DDSolver(problem; nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol)
 
     # # Initialize outputs
     # if ~isempty(problem.outputs)
@@ -22,14 +22,14 @@ function run!(problem::AbstractDDProblem{T}; log::Bool = true, linear_log::Bool 
     @timeit timer "Apply Initial Conditions" applyIC!(problem)
 
     # Steady state problem
-    solve!(solver, problem, timer; log = log, linear_log = linear_log)
+    solve!(solver, problem, timer; log=log, linear_log=linear_log)
 
     # Final update
     # @timeit timer "Final update" final_update!(problem)
 
     # End of simulation information - TimerOutputs
     if log
-        print_timer(timer, title = "Performance graph")
+        print_timer(timer, title="Performance graph")
         println()
     end
 
@@ -54,7 +54,7 @@ mutable struct TransientExecutioner{T<:Real}
         return new{T}(0, time_stepper.start_time, time_stepper.start_time, 0.0)
     end
 end
-    
+
 function advanceTime!(exec::TransientExecutioner{T}, time_stepper::TimeStepper{T}) where {T<:Real}
     # Update time step
     exec.time_step = exec.time_step + 1
@@ -73,12 +73,12 @@ function print_TimeStepInfo(exec::TransientExecutioner{T}) where {T<:Real}
     return nothing
 end
 
-function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::Bool = true, linear_log::Bool = false, nl_max_it::Int64 = 100, nl_abs_tol::T = 1.0e-10, nl_rel_tol::T = 1.0e-10) where {T<:Real}
+function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::Bool=true, linear_log::Bool=false, nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10) where {T<:Real}
     # Timer
     timer = TimerOutput()
-    
+
     # Initialize solver
-    @timeit timer "Initialize Solver" solver = DDSolver(problem; nl_max_it = nl_max_it, nl_abs_tol = nl_abs_tol, nl_rel_tol = nl_rel_tol)
+    @timeit timer "Initialize Solver" solver = DDSolver(problem; nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol)
 
     # # Initialize outputs
     # if ~isempty(problem.outputs)
@@ -117,7 +117,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::
         # Pressure update
         computePressureCoupling!(problem, exec.time, timer)
         # Transient problem
-        solve!(solver, problem, timer; log = log, linear_log = linear_log)
+        solve!(solver, problem, timer; log=log, linear_log=linear_log)
 
         # # Final update
         # @timeit timer "Final update" final_update!(problem)
@@ -128,7 +128,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::
         # end
 
         # Reinit solver
-        @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step = true)
+        @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step=true)
     end
 
     # Final update
@@ -136,7 +136,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::TimeStepper{T}; log::
 
     # End of simulation information - TimerOutputs
     if log
-        print_timer(timer, title = "Performance graph")
+        print_timer(timer, title="Performance graph")
         println()
     end
 

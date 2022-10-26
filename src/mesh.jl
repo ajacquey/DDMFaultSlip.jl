@@ -1,5 +1,5 @@
-const Point2D{T<:Real} = SVector{2, T}
-const Point3D{T<:Real} = SVector{3, T}
+const Point2D{T<:Real} = SVector{2,T}
+const Point3D{T<:Real} = SVector{3,T}
 
 abstract type DDElem{T<:Real} end
 
@@ -8,7 +8,7 @@ One-dimensional element: Edge
 """
 struct DDEdgeElem{T<:Real} <: DDElem{T}
     " List of nodes"
-    nodes::SVector{2, Point2D{T}}
+    nodes::SVector{2,Point2D{T}}
     " Centroid coordinates"
     X::Point2D{T}
 end
@@ -18,7 +18,7 @@ Two-dimensional element: Triangle
 """
 struct DDTriangleElem{T<:Real} <: DDElem{T}
     " List of nodes"
-    nodes::SVector{3, Point3D{T}}
+    nodes::SVector{3,Point3D{T}}
     " Centroid coordinates"
     X::Point3D{T}
 end
@@ -34,9 +34,9 @@ struct DDMesh1D{T<:Real} <: DDMesh{T}
     " List of elems"
     elems::Vector{DDEdgeElem{T}}
     " Elements connection"
-    elem2nodes::Vector{SVector{2, Int}}
+    elem2nodes::Vector{SVector{2,Int}}
     " Constructor"
-    function DDMesh1D(start_point::SVector{2, T}, end_point::SVector{2, T}, n::Int) where {T<:Real}
+    function DDMesh1D(start_point::SVector{2,T}, end_point::SVector{2,T}, n::Int) where {T<:Real}
         # Directional vector
         u = (end_point .- start_point) / n
         # Nodes list
@@ -44,7 +44,7 @@ struct DDMesh1D{T<:Real} <: DDMesh{T}
         # Elems list
         elems = [DDEdgeElem(SVector(nodes[i], nodes[i+1]), (nodes[i] + nodes[i+1]) / 2.0) for i in 1:n]
         # Elements connection
-        elem2nodes = [[i, i+1] for i in 1:n]
+        elem2nodes = [[i, i + 1] for i in 1:n]
 
         return new{T}(nodes, elems, elem2nodes)
     end
@@ -69,9 +69,9 @@ struct DDMesh2D{T<:Real} <: DDMesh{T}
     " List of elems"
     elems::Vector{DDTriangleElem{T}}
     " Elements connection"
-    elem2nodes::Vector{SVector{3, Int}}
+    elem2nodes::Vector{SVector{3,Int}}
     " Constructor"
-    function DDMesh2D(T::DataType, file::String; log::Bool = false)
+    function DDMesh2D(T::DataType, file::String; log::Bool=false)
         # Check if file exists
         @assert isfile(file)
         # Create containers

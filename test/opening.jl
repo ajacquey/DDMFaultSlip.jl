@@ -12,13 +12,13 @@ end
 function ϵ_analytical_2D(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
     x = [mesh.elems[i].X[1] for i in 1:length(mesh.elems)]
 
-    return sqrt.(1.0 .- x.^2) / μ
+    return sqrt.(1.0 .- x .^ 2) / μ
 end
 
 function ϵ_analytical_3D(mesh::DDMesh2D{T}, μ::T, ν::T)::Vector{T} where {T<:Real}
     r = [sqrt(mesh.elems[i].X[1]^2 + mesh.elems[i].X[2]^2) for i in 1:length(mesh.elems)]
 
-    return 4 * (1 - ν) / (π * μ) * sqrt.(1 .- r.^2)
+    return 4 * (1 - ν) / (π * μ) * sqrt.(1 .- r .^ 2)
 end
 
 @testset "Crack opening" begin
@@ -33,11 +33,11 @@ end
         μ = 1.0
 
         # Create problem
-        problem = NormalDDProblem(mesh; μ = μ)
+        problem = NormalDDProblem(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(σ_cst))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         ϵ_sol = ϵ_analytical_2D(mesh, μ)
@@ -55,11 +55,11 @@ end
         ν = 0.0
 
         # Create problem
-        problem = NormalDDProblem(mesh; μ = μ, ν = ν)
+        problem = NormalDDProblem(mesh; μ=μ, ν=ν)
         addConstraint!(problem, FunctionConstraint(σ_cst))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
@@ -77,11 +77,11 @@ end
         ν = 0.0
 
         # Create problem
-        problem = NormalDDProblem(mesh; μ = μ, ν = ν)
+        problem = NormalDDProblem(mesh; μ=μ, ν=ν)
         addConstraint!(problem, FunctionConstraint(σ_cst))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)

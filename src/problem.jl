@@ -217,13 +217,13 @@ function addShearDDIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where 
     return nothing
 end
 
-function addShearDDIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2, Function}) where {T<:Real}
+function addShearDDIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
     problem.δ_x.func_ic = func_ic[1]
     problem.δ_y.func_ic = func_ic[2]
     return nothing
 end
 
-function addShearDDIC!(problem::CoupledDDProblem3D{T}, func_ic::SVector{2, Function}) where {T<:Real}
+function addShearDDIC!(problem::CoupledDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
     problem.δ_x.func_ic = func_ic[1]
     problem.δ_y.func_ic = func_ic[2]
     return nothing
@@ -254,13 +254,13 @@ function addShearStressIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) wh
     return nothing
 end
 
-function addShearStressIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2, Function}) where {T<:Real}
+function addShearStressIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
     problem.τ_x.func_ic = func_ic[1]
     problem.τ_y.func_ic = func_ic[2]
     return nothing
 end
 
-function addShearStressIC!(problem::CoupledDDProblem3D{T}, func_ic::SVector{2, Function}) where {T<:Real}
+function addShearStressIC!(problem::CoupledDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
     problem.τ_x.func_ic = func_ic[1]
     problem.τ_y.func_ic = func_ic[2]
     return nothing
@@ -368,7 +368,7 @@ function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::Abstrac
 
     # Add FrictionConstraint
     push!(problem.friction, friction)
-    
+
     return nothing
 end
 
@@ -388,7 +388,7 @@ function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupl
 
     # Add FluidCoupling
     push!(problem.fluid_coupling, pp)
-    
+
     return nothing
 end
 

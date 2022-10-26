@@ -98,7 +98,7 @@ struct DD3DNormalElasticMatrix{T<:Real} <: ElasticKernelMatrix{T}
 end
 
 function Base.getindex(K::DD3DNormalElasticMatrix, i::Int, j::Int)
-    return  K.μ / (4 * π * (1.0 - K.ν)) * integralI003(K.e[i], K.e[j])
+    return K.μ / (4 * π * (1.0 - K.ν)) * integralI003(K.e[i], K.e[j])
 end
 
 function Base.size(K::DD3DNormalElasticMatrix)

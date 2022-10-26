@@ -23,11 +23,11 @@ function σ₀(X)
     return 1.0
 end
 
-function p_func_2D(X::SVector{2, T}, time::T)::T where {T<:Real}
+function p_func_2D(X::SVector{2,T}, time::T)::T where {T<:Real}
     return Δp * erfc(abs(X[1]) / sqrt(α * time))
 end
 
-function p_func_3D(X::SVector{3, T}, time::T)::T where {T<:Real}
+function p_func_3D(X::SVector{3,T}, time::T)::T where {T<:Real}
     return Δpᵢ * expint(1, norm(X)^2 / (α * time))
 end
 
@@ -51,7 +51,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ = μ)
+        problem = CoupledDDProblem2D(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -63,16 +63,16 @@ end
         addFrictionConstraint!(problem, ConstantYield(τₛ, kₙ, kₛ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop = 10.0, length = 20))
-        time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 10.0)
+        time_seq = collect(range(0.5, stop=10.0, length=20))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
 
         # Run problem
-        run!(problem, time_stepper; log = false)
+        run!(problem, time_stepper; log=false)
 
         # Analytical solutions
         DD_sol = DD_analytical_2D(mesh, μ)
         # Error
-        err = mean(abs.(problem.ϵ.value - DD_sol) ./ DD_sol) 
+        err = mean(abs.(problem.ϵ.value - DD_sol) ./ DD_sol)
         # Error less than 2%
         @test err < 0.02
     end
@@ -85,7 +85,7 @@ end
         ν = 0.0
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ = μ, ν = ν)
+        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
 
         # ICs
         addNormalStressIC!(problem, σ₀)
@@ -97,16 +97,16 @@ end
         addFrictionConstraint!(problem, ConstantYield(τₛ, kₙ, kₛ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop = 10.0, length = 20))
-        time_stepper = TimeSequence(time_seq; start_time = 0.0, end_time = 10.0)
+        time_seq = collect(range(0.5, stop=10.0, length=20))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
 
         # Run problem
-        run!(problem, time_stepper; log = false)
+        run!(problem, time_stepper; log=false)
 
         # Analytical solutions
         DD_sol = DD_analytical_3D(mesh, μ)
         # Error
-        err = mean(abs.(problem.ϵ.value - DD_sol) ./ DD_sol) 
+        err = mean(abs.(problem.ϵ.value - DD_sol) ./ DD_sol)
         # Error less than 2%
         @test err < 0.02
     end

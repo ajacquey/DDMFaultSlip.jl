@@ -38,11 +38,11 @@ include("injection_utils.jl")
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ = μ)
+        problem = ShearDDProblem2D(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(τ_inj))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         δ_sol = δ_analytical(mesh)
@@ -79,11 +79,11 @@ include("injection_utils.jl")
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ = μ)
+        problem = ShearDDProblem2D(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(τ_inj))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         δ_sol = δ_analytical(mesh)
@@ -120,11 +120,11 @@ include("injection_utils.jl")
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ = μ)
+        problem = ShearDDProblem2D(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(τ_inj))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         δ_sol = δ_analytical(mesh)

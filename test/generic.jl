@@ -12,7 +12,7 @@ end
 function ϵ_analytical(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
     x = [mesh.elems[i].X[1] for i in 1:length(mesh.elems)]
 
-    return (1.0 .- x.^2).^1.5
+    return (1.0 .- x .^ 2) .^ 1.5
 end
 
 @testset "Generic stress" begin
@@ -27,11 +27,11 @@ end
         μ = 1.0
 
         # Create problem
-        problem = NormalDDProblem(mesh; μ = μ)
+        problem = NormalDDProblem(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(σ_cst))
 
         # Run problem
-        run!(problem; log = false)
+        run!(problem; log=false)
 
         # Analytical solution
         ϵ_sol = ϵ_analytical(mesh, μ)
