@@ -1,7 +1,10 @@
-# using HMatrices
-abstract type DDJacobian{R,T<:Real} end
+import LinearAlgebra.mul!
+import Base.*
 
-mutable struct NormalDDJacobian{R,T<:Real} <: DDJacobian{R,T}
+# using HMatrices
+abstract type AbstractDDJacobian{R,T<:Real} end
+
+mutable struct NormalDDJacobian{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Normal collocation matrix"
     En::HMatrix{R,T}
 
@@ -38,7 +41,7 @@ function reinitLocalJacobian!(J::NormalDDJacobian{R,T}) where {R,T<:Real}
     fill!(J.jac_loc, 0.0)
 end
 
-mutable struct ShearDDJacobian2D{R,T<:Real} <: DDJacobian{R,T}
+mutable struct ShearDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Shear collocation matrices"
     Es::HMatrix{R,T}
 
@@ -71,7 +74,7 @@ function reinitLocalJacobian!(J::ShearDDJacobian2D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc, 0.0)
 end
 
-mutable struct ShearDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+mutable struct ShearDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Shear collocation matrices"
     Esxx::HMatrix{R,T}
     Esyy::HMatrix{R,T}
@@ -112,7 +115,7 @@ function reinitLocalJacobian!(J::ShearDDJacobian3D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc_y, 0.0)
 end
 
-mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Shear collocation matrices"
     Esxx::HMatrix{R,T}
     Esyy::HMatrix{R,T}
@@ -150,7 +153,7 @@ function reinitLocalJacobian!(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc_y, 0.0)
 end
 
-mutable struct CoupledDDJacobian2D{R,T<:Real} <: DDJacobian{R,T}
+mutable struct CoupledDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Collocation matrices"
     E::HMatrix{R,T}
 
@@ -195,7 +198,7 @@ function reinitLocalJacobian!(J::CoupledDDJacobian2D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc_δ[2], 0.0)
 end
 
-mutable struct CoupledDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+mutable struct CoupledDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Normal collocation matrix"
     En::HMatrix{R,T}
     " Shear collocation matrices"
@@ -262,7 +265,7 @@ function reinitLocalJacobian!(J::CoupledDDJacobian3D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc_δy[3], 0.0)
 end
 
-mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: DDJacobian{R,T}
+mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Normal collocation matrix"
     En::HMatrix{R,T}
     " Shear collocation matrices"
@@ -326,7 +329,7 @@ function reinitLocalJacobian!(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
     fill!(J.jac_loc_δy[3], 0.0)
 end
 
-function Base.size(J::DDJacobian{R,T}, d::Integer) where {R,T<:Real}
+function Base.size(J::AbstractDDJacobian{R,T}, d::Integer) where {R,T<:Real}
     if d < 1 || d > 2
         throw(ArgumentError("dimension d must be ≥ 1 and ≤ 2, got $d"))
     else
@@ -334,12 +337,18 @@ function Base.size(J::DDJacobian{R,T}, d::Integer) where {R,T<:Real}
     end
 end
 
+" Multiplication operator for AbstractDDJacobian"
+function *(J::AbstractDDJacobian{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+    y = zeros(T, length(x))
+    return mul!(y, J, x)
+end
+
 " mul! function for NormalDDJacobian"
-function LinearAlgebra.mul!(y::AbstractVector, J::NormalDDJacobian{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::NormalDDJacobian{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     y .+= J.jac_loc .* x
@@ -348,11 +357,11 @@ function LinearAlgebra.mul!(y::AbstractVector, J::NormalDDJacobian{R,T}, x::Abst
 end
 
 " mul! function for ShearDDJacobian2D"
-function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian2D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::ShearDDJacobian2D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     y .+= J.jac_loc .* x
@@ -361,11 +370,11 @@ function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian2D{R,T}, x::Abs
 end
 
 " mul! function for ShearNoNuDDJacobian3D"
-function LinearAlgebra.mul!(y::AbstractVector, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     y .+= vcat(J.jac_loc_x, J.jac_loc_y) .* x
@@ -375,11 +384,11 @@ end
 
 
 " mul! function for ShearDDJacobian3D"
-function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     y .+= vcat(J.jac_loc_x, J.jac_loc_y) .* x
@@ -388,11 +397,11 @@ function LinearAlgebra.mul!(y::AbstractVector, J::ShearDDJacobian3D{R,T}, x::Abs
 end
 
 " mul! function for CoupledDDJacobian2D"
-function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian2D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     n = div(length(x), 2)
@@ -404,11 +413,11 @@ function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian2D{R,T}, x::A
 end
 
 " mul! function for CoupledNoNuDDJacobian3D"
-function LinearAlgebra.mul!(y::AbstractVector, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     n = div(length(x), 3)
@@ -420,11 +429,11 @@ function LinearAlgebra.mul!(y::AbstractVector, J::CoupledNoNuDDJacobian3D{R,T}, 
     return y
 end
 " mul! function for CoupledNoNuDDJacobian2D"
-function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian3D{R,T}, x::AbstractVector, a::Number=1, b::Number=0;
-    global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
+function LinearAlgebra.mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     
     # Hmatrix multiplication
-    collocation_mul!(y, J, x)
+    collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
     n = div(length(x), 3)
@@ -437,133 +446,208 @@ function LinearAlgebra.mul!(y::AbstractVector, J::CoupledDDJacobian3D{R,T}, x::A
 end
 
 " collocation_mul! function for NormalDDJacobian"
-function collocation_mul!(y::AbstractVector{T}, J::NormalDDJacobian{R,T}, x::AbstractVector{T}; global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
-    mul!(y, J.En, x, 1, 0; global_index=global_index, threads=threads)
+function collocation_mul!(y::AbstractVector{T}, J::NormalDDJacobian{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0; 
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    mul!(y, J.En, x, a, b; global_index=global_index, threads=threads)
     return y
 end
 
 " collocation_mul! function for ShearDDJacobian2D"
-function collocation_mul!(y::AbstractVector{T}, J::ShearDDJacobian2D{R,T}, x::AbstractVector{T}; global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads()) where {R,T<:Real}
-    mul!(y, J.Es, x, 1, 0; global_index=global_index, threads=threads)
+function collocation_mul!(y::AbstractVector{T}, J::ShearDDJacobian2D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    mul!(y, J.Es, x, a, b; global_index=global_index, threads=threads)
     return y
 end
 
 " collocation_mul! function for ShearDDJacobian3D"
-function collocation_mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+function collocation_mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
     n = size(J.Esxx, 1)
 
-    y[1:n] = J.Esxx * x[1:n] + J.Esxy * x[n+1:2*n]
-    y[n+1:2*n] = J.Esxy * x[1:n] + J.Esyy * x[n+1:2*n]
+    # Slip δ_x multiplication
+    mul!(view(y, 1:n), J.Esxx, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, 1:n), J.Esxy, view(x, n+1:2*n), a, 1; global_index=global_index, threads=threads)
+    # Slip δ_y multiplication
+    mul!(view(y, n+1:2*n), J.Esyy, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, n+1:2*n), J.Esxy, view(x, 1:n), a, 1; global_index=global_index, threads=threads)
+   
     return y
 end
 
 " collocation_mul! function for ShearNoNuDDJacobian3D"
-function collocation_mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+function collocation_mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
     n = size(J.Esxx, 1)
 
-    y[1:n] = J.Esxx * x[1:n]
-    y[n+1:2*n] = J.Esyy * x[n+1:2*n]
+    # Slip δ_x multiplication
+    mul!(view(y, 1:n), J.Esxx, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    # Slip δ_y multiplication
+    mul!(view(y, n+1:2*n), J.Esyy, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
 
     return y
 end
 
 " collocation_mul! function for CoupledDDJacobian2D"
-function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
     n = size(J.E, 1)
 
-    y[1:n] = J.E * x[1:n]
-    y[n+1:2*n] = J.E * x[n+1:2*n]
-
-    return y
-end
-
-" collocation_mul! function for CoupledNoNuDDJacobian3D"
-function collocation_mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
-    n = size(J.En, 1)
-
-    y[1:n] = J.En * x[1:n]
-    y[n+1:2*n] = J.Esxx * x[n+1:2*n]
-    y[2*n+1:3*n] = J.Esyy * x[2*n+1:3*n]
+    # Opening ϵ multiplication
+    mul!(view(y, 1:n), J.E, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    # Slip δ multiplication
+    mul!(view(y, n+1:2*n), J.E, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
 
     return y
 end
 
 " collocation_mul! function for CoupledDDJacobian3D"
 function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+    # Size of HMatrix
     n = size(J.En, 1)
 
-    y[1:n] = J.En * x[1:n]
-    y[n+1:2*n] = J.Esxx * x[n+1:2*n] + J.Esxy * x[2*n+1:3*n]
-    y[2*n+1:3*n] = J.Esxy * x[n+1:2*n] + J.Esyy * x[2*n+1:3*n]
+    # Opening ϵ multiplication
+    mul!(view(y, 1:n), J.En, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    # Slip δ_x multiplication
+    mul!(view(y, n+1:2*n), J.Esxx, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, n+1:2*n), J.Esxy, view(x, 2*n+1:3*n), a, 1; global_index=global_index, threads=threads)
+    # Slip δ_y multiplication
+    mul!(view(y, 2*n+1:3*n), J.Esyy, view(x, 2*n+1:3*n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, 2*n+1:3*n), J.Esxy, view(x, n+1:2*n), a, 1; global_index=global_index, threads=threads)
 
     return y
 end
 
-
-" collocation_mul! function for ShearDDJacobian3D"
-function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
-    n = size(J.Esxx, 1)
-
-    if (d == 1)
-        return J.Esxx * x[1:n] + J.Esxy * x[n+1:2*n]
-    elseif (d == 2)
-        return J.Esxy * x[1:n] + J.Esyy * x[n+1:2*n]
-    else
-        throw(ErrorException("Wrong dimension!"))
-    end
-end
-
-" collocation_mul! function for ShearNoNuDDJacobian3D"
-function collocation_mul(J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
-    n = size(J.Esxx, 1)
-
-    if (d == 1)
-        return J.Esxx * x[1:n]
-    elseif (d == 2)
-        return J.Esyy * x[n+1:2*n]
-    else
-        throw(ErrorException("Wrong dimension!"))
-    end
-end
-
-" collocation_mul! function for CoupledDDJacobian2D"
-function collocation_mul(J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
-    n = size(J.E, 1)
-
-    if (d == 0)
-        return J.E * x[1:n]
-    elseif (d == 1)
-        return J.E * x[n+1:2*n]
-    else
-        throw(ErrorException("Wrong dimension!"))
-    end
-end
-
 " collocation_mul! function for CoupledNoNuDDJacobian3D"
-function collocation_mul(J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
+function collocation_mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
     n = size(J.En, 1)
 
-    if (d == 0)
-        return J.En * x[1:n]
-    elseif (d == 1)
-        return J.Esxx * x[n+1:2*n]
+    # Opening ϵ multiplication
+    mul!(view(y, 1:n), J.En, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    # Slip δ_x multiplication
+    mul!(view(y, n+1:2*n), J.Esxx, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
+    # Slip δ_y multiplication
+    mul!(view(y, 2*n+1:3*n), J.Esyy, view(x, 2*n+1:3*n), a, b; global_index=global_index, threads=threads)
+
+    return y
+end
+
+" collocation_mul function for ShearDDJacobian3D"
+function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer; 
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
+    n = size(J.Esxx, 1)
+    # Declare results
+    y = zeros(T, n)
+
+    if (d == 1)
+        # Slip δ_x multiplication
+        mul!(y, J.Esxx, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.Esxy, view(x, n+1:2*n), 1, 1; global_index=global_index, threads=threads)
+        return y
     elseif (d == 2)
-        return J.Esyy * x[2*n+1:3*n]
+        # Slip δ_y multiplication
+        mul!(y, J.Esyy, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.Esxy, view(x, 1:n), 1, 1; global_index=global_index, threads=threads)
+        return y
     else
         throw(ErrorException("Wrong dimension!"))
     end
 end
 
-" collocation_mul! function for CoupledDDJacobian3D"
-function collocation_mul(J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer) where {R,T<:Real}
-    n = size(J.En, 1)
+" collocation_mul function for ShearNoNuDDJacobian3D"
+function collocation_mul(J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer; 
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
+    n = size(J.Esxx, 1)
+    # Declare results
+    y = zeros(T, n)
+
+    if (d == 1)
+        # Slip δ_x multiplication
+        mul!(y, J.Esxx, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        return y
+    elseif (d == 2)
+        # Slip δ_y multiplication
+        mul!(y, J.Esyy, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        return y
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end
+
+" collocation_mul function for CoupledDDJacobian2D"
+function collocation_mul(J::CoupledDDJacobian2D{R,T}, x::AbstractVector{T}, d::Integer; 
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
+    n = size(J.E, 1)
+    # Declare results
+    y = zeros(T, n)
 
     if (d == 0)
-        return J.En * x[1:n]
+        # Opening ϵ multiplication
+        mul!(y, J.E, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        return y
     elseif (d == 1)
-        return J.Esxx * x[n+1:2*n] + J.Esxy * x[2*n+1:3*n]
+        # Slip δ multiplication
+        mul!(y, J.E, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        return y
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end
+
+" collocation_mul function for CoupledNoNuDDJacobian3D"
+function collocation_mul(J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer; 
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
+    n = size(J.En, 1)
+    # Declare results
+    y = zeros(T, n)
+
+    if (d == 0)
+        # Opening ϵ multiplication
+        mul!(y, J.En, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        return y
+    elseif (d == 1)
+        # Slip δ_x multiplication
+        mul!(y, J.Esxx, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        return y
     elseif (d == 2)
-        return J.Esxy * x[n+1:2*n] + J.Esyy * x[2*n+1:3*n]
+        # Slip δ_y multiplication
+        mul!(y, J.Esyy, view(x, 2*n+1:3*n), 1, 0; global_index=global_index, threads=threads)
+        return y
+    else
+        throw(ErrorException("Wrong dimension!"))
+    end
+end
+
+" collocation_mul function for CoupledDDJacobian3D"
+function collocation_mul(J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer; 
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
+    # Size of HMatrix
+    n = size(J.En, 1)
+    # Declare results
+    y = zeros(T, n)
+
+    if (d == 0)
+        # Opening ϵ multiplication
+        mul!(y, J.En, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        return y
+    elseif (d == 1)
+        # Slip δ_x multiplication
+        mul!(y, J.Esxx, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.Esxy, view(x, 2*n+1:3*n), 1, 1; global_index=global_index, threads=threads)
+        return y
+    elseif (d == 2)
+        # Slip δ_y multiplication
+        mul!(y, J.Esyy, view(x, 2*n+1:3*n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.Esxy, view(x, n+1:2*n), 1, 1; global_index=global_index, threads=threads)
+        return y
     else
         throw(ErrorException("Wrong dimension!"))
     end

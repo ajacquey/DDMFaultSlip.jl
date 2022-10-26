@@ -3,7 +3,7 @@ mutable struct DDSolver{R,T<:Real}
     # problem::AbstractDDProblem{T}
 
     " The jacobian matrix"
-    mat::DDJacobian{R,T}
+    mat::AbstractDDJacobian{R,T}
 
     " The residual vector"
     rhs::Vector{T}
@@ -155,7 +155,11 @@ end
 function Base.show(io::IO, solver::DDSolver{R,T}) where {R,T<:Real}
     # Nonlinear system
     @printf("Nonlinear system:\n")
-    @printf("  Num DoFs: %i\n\n", size(solver.mat, 1))
+    @printf("  Num DoFs: %i\n", size(solver.mat, 1))
+    @printf("  Use threads with HMatrix: ")
+    @printf("%s", HMatrices.use_threads() ? "true\n" : "false\n")
+    @printf("  Use global index with HMatrix: ")
+    @printf("%s", HMatrices.use_global_index() ? "true\n\n" : "false\n\n")
 end
 
 " Reinitialize solver after successful solve"
