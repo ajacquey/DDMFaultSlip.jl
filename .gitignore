@@ -6,3 +6,6 @@
 
 .DS_Store
 */.DS_Store
+
+# Outputs from tests
+test/outputs/*

@@ -30,7 +30,12 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
 
     " Constructor"
     function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient, Variable(T, :ϵ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
+        return new{T}(mesh, μ, ν, false, transient,
+            Variable(T, :ϵ, length(mesh.elems)),
+            AuxVariable(T, :σ, length(mesh.elems)),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractFluidCoupling}(undef, 0),
+        )
     end
 end
 
@@ -56,9 +61,13 @@ mutable struct ShearDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     " A vector of Constraints"
     constraints::Vector{AbstractConstraint}
 
-    " Incomplete constructor"
+    " Constructor"
     function ShearDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, false, transient, Variable(T, :δ, length(mesh.elems)), AuxVariable(T, :τ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0))
+        return new{T}(mesh, μ, false, transient,
+            Variable(T, :δ, length(mesh.elems)),
+            AuxVariable(T, :τ, length(mesh.elems)),
+            Vector{AbstractConstraint}(undef, 0),
+        )
     end
 end
 
@@ -90,9 +99,16 @@ mutable struct ShearDDProblem3D{T<:Real} <: AbstractDDProblem{T}
     constraints_x::Vector{AbstractConstraint}
     constraints_y::Vector{AbstractConstraint}
 
-    " Incomplete constructor"
+    " Constructor"
     function ShearDDProblem3D(mesh::DDMesh2D{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient, Variable(T, :δ_x, length(mesh.elems)), Variable(T, :δ_y, length(mesh.elems)), AuxVariable(T, :τ_x, length(mesh.elems)), AuxVariable(T, :τ_y, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0))
+        return new{T}(mesh, μ, ν, false, transient,
+            Variable(T, :δ_x, length(mesh.elems)),
+            Variable(T, :δ_y, length(mesh.elems)),
+            AuxVariable(T, :τ_x, length(mesh.elems)),
+            AuxVariable(T, :τ_y, length(mesh.elems)),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractConstraint}(undef, 0),
+        )
     end
 end
 
@@ -129,9 +145,18 @@ mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     " A vector of PressureCoupling"
     fluid_coupling::Vector{AbstractFluidCoupling}
 
-    " Incomplete constructor"
+    " Constructor"
     function CoupledDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
+        return new{T}(mesh, μ, false, transient,
+            Variable(T, :ϵ, length(mesh.elems)),
+            Variable(T, :δ, length(mesh.elems)),
+            AuxVariable(T, :σ, length(mesh.elems)),
+            AuxVariable(T, :τ, length(mesh.elems)),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractFriction}(undef, 0),
+            Vector{AbstractFluidCoupling}(undef, 0),
+        )
     end
 end
 
@@ -174,9 +199,21 @@ mutable struct CoupledDDProblem3D{T<:Real} <: AbstractDDProblem{T}
     " A vector of PressureCoupling"
     fluid_coupling::Vector{AbstractFluidCoupling}
 
-    " Incomplete constructor"
+    " Constructor"
     function CoupledDDProblem3D(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient, Variable(T, :ϵ, length(mesh.elems)), Variable(T, :δ_x, length(mesh.elems)), Variable(T, :δ_y, length(mesh.elems)), AuxVariable(T, :σ, length(mesh.elems)), AuxVariable(T, :τ_x, length(mesh.elems)), AuxVariable(T, :τ_y, length(mesh.elems)), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractConstraint}(undef, 0), Vector{AbstractFriction}(undef, 0), Vector{AbstractFluidCoupling}(undef, 0))
+        return new{T}(mesh, μ, ν, false, transient,
+            Variable(T, :ϵ, length(mesh.elems)),
+            Variable(T, :δ_x, length(mesh.elems)),
+            Variable(T, :δ_y, length(mesh.elems)),
+            AuxVariable(T, :σ, length(mesh.elems)),
+            AuxVariable(T, :τ_x, length(mesh.elems)),
+            AuxVariable(T, :τ_y, length(mesh.elems)),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractFriction}(undef, 0),
+            Vector{AbstractFluidCoupling}(undef, 0),
+        )
     end
 end
 

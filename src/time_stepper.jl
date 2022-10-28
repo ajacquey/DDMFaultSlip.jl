@@ -1,6 +1,6 @@
-abstract type TimeStepper{T<:Real} end
+abstract type AbstractTimeStepper{T<:Real} end
 
-mutable struct TimeSequence{T<:Real} <: TimeStepper{T}
+mutable struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
     " Start time"
     start_time::T
 

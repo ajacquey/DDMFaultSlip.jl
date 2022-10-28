@@ -72,15 +72,17 @@ struct DDMesh2D{T<:Real} <: DDMesh{T}
     elem2nodes::Vector{SVector{3,Int}}
     " Constructor"
     function DDMesh2D(T::DataType, file::String; log::Bool=false)
+        # Directory of input file
+        dir = dirname(Base.source_path())
         # Check if file exists
-        @assert isfile(file)
+        @assert isfile(string(dir, "/", file))
         # Create containers
         nodes = Vector{Point3D{T}}(undef, 0)
         nodes_id = Vector{Int}(undef, 0)
         elems = Vector{DDTriangleElem}(undef, 0)
         elem2nodes = Vector{Vector{Int}}(undef, 0)
         # Open file
-        f = open(file, "r")
+        f = open(string(dir, "/", file), "r")
         # Read file line by line
         while !eof(f)
             line = strip(readline(f))

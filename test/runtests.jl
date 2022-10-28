@@ -9,4 +9,5 @@ using Test
     include("coupled.jl")
     include("fluid_coupling.jl")
     include("constant_friction.jl")
+    include("outputs.jl")
 end
