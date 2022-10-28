@@ -229,77 +229,59 @@ function hasShearDD3D(problem::AbstractDDProblem{T})::Bool where {T<:Real}
     return (isa(problem, ShearDDProblem3D) || isa(problem, CoupledDDProblem3D))
 end
 
-function addNormalDDIC!(problem::NormalDDProblem{T}, func_ic::Function) where {T<:Real}
-    problem.ϵ.func_ic = func_ic
+function addNormalDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
+    if hasNormalDD(problem)
+        problem.ϵ.func_ic = func_ic
+    else
+        throw(ErrorException("This problem doesn't have a normal DD!"))
+    end
     return nothing
 end
 
-function addNormalDDIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
-    problem.ϵ.func_ic = func_ic
+function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
+    if hasShearDD2D(problem)
+        problem.δ.func_ic = func_ic
+    else
+        throw(ErrorException("This problem doesn't have a shear DD!"))
+    end
     return nothing
 end
 
-function addNormalDDIC!(problem::CoupledDDProblem3D{T}, func_ic::Function) where {T<:Real}
-    problem.ϵ.func_ic = func_ic
+function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::SVector{2,Function}) where {T<:Real}
+    if hasShearDD3D(problem)
+        problem.δ_x.func_ic = func_ic[1]
+        problem.δ_y.func_ic = func_ic[2]
+    else
+        throw(ErrorException("This problem doesn't have a shear DD!"))
+    end
     return nothing
 end
 
-function addShearDDIC!(problem::ShearDDProblem2D{T}, func_ic::Function) where {T<:Real}
-    problem.δ.func_ic = func_ic
+function addNormalStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
+    if hasNormalDD(problem)
+        problem.σ.func_ic = func_ic
+    else
+        throw(ErrorException("This problem doesn't have a normal stress!"))
+    end
     return nothing
 end
 
-function addShearDDIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
-    problem.δ.func_ic = func_ic
+function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
+    if hasShearDD2D(problem)
+        problem.τ.func_ic = func_ic
+    else
+        throw(ErrorException("This problem doesn't have a shear shear!"))
+    end
     return nothing
 end
 
-function addShearDDIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
-    problem.δ_x.func_ic = func_ic[1]
-    problem.δ_y.func_ic = func_ic[2]
-    return nothing
-end
-
-function addShearDDIC!(problem::CoupledDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
-    problem.δ_x.func_ic = func_ic[1]
-    problem.δ_y.func_ic = func_ic[2]
-    return nothing
-end
-
-function addNormalStressIC!(problem::NormalDDProblem{T}, func_ic::Function) where {T<:Real}
-    problem.σ.func_ic = func_ic
-    return nothing
-end
-
-function addNormalStressIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
-    problem.σ.func_ic = func_ic
-    return nothing
-end
-
-function addNormalStressIC!(problem::CoupledDDProblem3D{T}, func_ic::Function) where {T<:Real}
-    problem.σ.func_ic = func_ic
-    return nothing
-end
-
-function addShearStressIC!(problem::ShearDDProblem2D{T}, func_ic::Function) where {T<:Real}
-    problem.τ.func_ic = func_ic
-    return nothing
-end
-
-function addShearStressIC!(problem::CoupledDDProblem2D{T}, func_ic::Function) where {T<:Real}
-    problem.τ.func_ic = func_ic
-    return nothing
-end
-
-function addShearStressIC!(problem::ShearDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
-    problem.τ_x.func_ic = func_ic[1]
-    problem.τ_y.func_ic = func_ic[2]
-    return nothing
-end
-
-function addShearStressIC!(problem::CoupledDDProblem3D{T}, func_ic::SVector{2,Function}) where {T<:Real}
-    problem.τ_x.func_ic = func_ic[1]
-    problem.τ_y.func_ic = func_ic[2]
+function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::SVector{2,Function}) where {T<:Real}
+    if hasShearDD3D(problem)
+        problem.τ_x.func_ic = func_ic[1]
+        problem.τ_y.func_ic = func_ic[2]
+    else
+        throw(ErrorException("This problem doesn't have a shear stress!"))
+    end
     return nothing
 end
 
