@@ -9,6 +9,7 @@ using HMatrices
 using IterativeSolvers
 using TimerOutputs
 using WriteVTK
+using DelimitedFiles
 
 include("mesh.jl")
 export Point2D, Point3D, DDMesh1D, DDMesh2D
@@ -49,6 +50,7 @@ include("assembly.jl")
 
 include("outputs.jl")
 export VTKDomainOutput
+export CSVDomainOutput
 
 function run!(problem::AbstractDDProblem{T};
     outputs::Vector{<:AbstractOutput{T}}=Vector{AbstractOutput{T}}(undef, 0),

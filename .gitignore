@@ -9,3 +9,6 @@
 
 # Outputs from tests
 test/outputs/*
+
+# Outputs from examples
+examples/2D-fluid-induced-aseismic-slip/outputs/*

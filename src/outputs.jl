@@ -117,3 +117,107 @@ function execute!(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, exec::
 
     return nothing
 end
+
+struct CSVDomainOutput{T<:Real} <: AbstractOutput{T}
+    " Base file name"
+    filename_base::String
+
+    " List of cell centroids"
+    csv_points::Matrix{T}
+
+    " Constructor"
+    function CSVDomainOutput(mesh::DDMesh1D{T}, filename::String) where {T<:Real}
+        # Create list of centroids
+        n_cells = length(mesh.elems)
+
+        # Create containers
+        points = Matrix{T}(undef, (n_cells, 2))
+
+        # List of elems
+        Threads.@threads for idx in eachindex(mesh.elems)
+            @inbounds points[idx,1] = mesh.elems[idx].X[1]
+            @inbounds points[idx,2] = mesh.elems[idx].X[2]
+        end
+
+        # Check filename and if sub-folder exists
+        if (contains(filename, '/'))
+            output_dir = string()
+            k_end = findlast(isequal('/'), filename)
+            if (startswith(filename, '/')) # absolute path
+                output_dir = filename[1:k_end]
+            else # relative path
+                output_dir = string(dirname(Base.source_path()), "/", filename[1:k_end])
+            end
+            # Create folder if it doesn't exist
+            if (!isdir(output_dir))
+                mkpath(output_dir)
+            end
+            filename_base = string(output_dir, filename[k_end+1:end])
+        else
+            filename_base = string(dirname(Base.source_path()), "/", filename)
+        end
+
+        return new{T}(filename_base, points)
+    end
+end
+
+function addDataToCSV!(data::Matrix{T}, header::String, problem::AbstractDDProblem{T}, dt::T) where {T<:Real}
+    if hasNormalDD(problem)
+        data = hcat(data, problem.ϵ.value)
+        header = string(header, ",epsilon")
+        data = hcat(data, problem.σ.value)
+        header = string(header, ",sigma")
+        if (dt != 0.0)
+            data = hcat(data, (problem.ϵ.value - problem.ϵ.value_old) / dt)
+        else
+            data = hcat(data, zeros(T, length(problem.ϵ.value)))
+        end
+        header = string(header, ",epsilon_dot")
+    end
+    if hasShearDD2D(problem)
+        data = hcat(data, problem.δ.value)
+        header = string(header, ",delta")
+        data = hcat(data, problem.τ.value)
+        header = string(header, ",tau")
+        if (dt != 0.0)
+            data = hcat(data, (problem.δ.value - problem.δ.value_old) / dt)
+        else
+            data = hcat(data, zeros(T, length(problem.δ.value)))
+        end
+        header = string(header, ",delta_dot")
+    end
+    if hasFluidCoupling(problem)
+        data = hcat(data, problem.fluid_coupling[1].p)
+        header = string(header, ",p")
+    end
+    header = string(header, "\n")
+    return data, header
+end
+
+function initialize!(out::CSVDomainOutput{T}, problem::AbstractDDProblem{T}, output_initial::Bool) where {T<:Real}
+    if output_initial
+        data = out.csv_points
+        header = "x,y"
+        data, header = addDataToCSV!(data, header, problem, 0.0)
+
+        open(string(out.filename_base, "_0.csv"); write = true) do f    
+            write(f, header) # write header
+            writedlm(f, data, ',') # write data
+        end
+    end
+
+    return nothing
+end
+
+function execute!(out::CSVDomainOutput{T}, problem::AbstractDDProblem{T}, exec::AbstractExecutioner{T}, output_initial::Bool) where {T<:Real}
+    data = out.csv_points
+    header = "x,y"
+    data, header = addDataToCSV!(data, header, problem, exec.dt)
+
+    open(string(out.filename_base, "_", exec.time_step, ".csv"); write = true) do f
+        write(f, header) # write header
+        writedlm(f, data, ',') # write data
+    end
+
+    return nothing
+end
