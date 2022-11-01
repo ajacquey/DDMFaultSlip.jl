@@ -24,6 +24,8 @@ mutable struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
             throw(DomainError(start_time, "Start time should be smaller or equal than first time in sequence!"))
         elseif (start_time == time_seq[1] != 0.0)
             pushfirst!(time_seq, 0.0)
+        elseif ((start_time == 0.0) && (time_seq[1] != 0.0))
+            pushfirst!(time_seq, 0.0)
         end
 
         # Check that end time is either last elem or bigger

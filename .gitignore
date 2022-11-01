@@ -11,4 +11,6 @@
 test/outputs/*
 
 # Outputs from examples
+/examples/Manifest.toml
 examples/2D-fluid-induced-aseismic-slip/outputs/*
+examples/3D-fluid-induced-aseismic-slip/outputs/*

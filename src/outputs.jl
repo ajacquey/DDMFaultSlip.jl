@@ -135,8 +135,8 @@ struct CSVDomainOutput{T<:Real} <: AbstractOutput{T}
 
         # List of elems
         Threads.@threads for idx in eachindex(mesh.elems)
-            @inbounds points[idx,1] = mesh.elems[idx].X[1]
-            @inbounds points[idx,2] = mesh.elems[idx].X[2]
+            @inbounds points[idx, 1] = mesh.elems[idx].X[1]
+            @inbounds points[idx, 2] = mesh.elems[idx].X[2]
         end
 
         # Check filename and if sub-folder exists
@@ -200,7 +200,7 @@ function initialize!(out::CSVDomainOutput{T}, problem::AbstractDDProblem{T}, out
         header = "x,y"
         data, header = addDataToCSV!(data, header, problem, 0.0)
 
-        open(string(out.filename_base, "_0.csv"); write = true) do f    
+        open(string(out.filename_base, "_0.csv"); write=true) do f
             write(f, header) # write header
             writedlm(f, data, ',') # write data
         end
@@ -214,7 +214,7 @@ function execute!(out::CSVDomainOutput{T}, problem::AbstractDDProblem{T}, exec::
     header = "x,y"
     data, header = addDataToCSV!(data, header, problem, exec.dt)
 
-    open(string(out.filename_base, "_", exec.time_step, ".csv"); write = true) do f
+    open(string(out.filename_base, "_", exec.time_step, ".csv"); write=true) do f
         write(f, header) # write header
         writedlm(f, data, ',') # write data
     end
