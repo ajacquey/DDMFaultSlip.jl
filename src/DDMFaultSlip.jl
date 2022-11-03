@@ -51,9 +51,10 @@ include("assembly.jl")
 include("outputs.jl")
 export VTKDomainOutput
 export CSVDomainOutput
+export CSVMaximumOutput
 
 function run!(problem::AbstractDDProblem{T};
-    outputs::Vector{<:AbstractOutput{T}}=Vector{AbstractOutput{T}}(undef, 0),
+    outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
     nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10) where {T<:Real}
     # Timer
@@ -78,7 +79,7 @@ function run!(problem::AbstractDDProblem{T};
 
     # Initialize outputs
     if ~isempty(outputs)
-        @timeit timer "Initialize Outputs" initializeOutputs!(outputs, problem, output_initial)
+        @timeit timer "Initialize Outputs" initializeOutputs!(outputs, problem, exec, output_initial)
     end
 
     # Steady state problem
@@ -102,7 +103,7 @@ function run!(problem::AbstractDDProblem{T};
 end
 
 function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T};
-    outputs::Vector{<:AbstractOutput{T}}=Vector{AbstractOutput{T}}(undef, 0),
+    outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
     nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10) where {T<:Real}
     # Timer
@@ -130,7 +131,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
 
     # Initialize outputs
     if ~isempty(outputs)
-        @timeit timer "Initialize Outputs" initializeOutputs!(outputs, problem, output_initial)
+        @timeit timer "Initialize Outputs" initializeOutputs!(outputs, problem, exec, output_initial)
     end
 
     while exec.time < (time_stepper.end_time - time_stepper.tol)
