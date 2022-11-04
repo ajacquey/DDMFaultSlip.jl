@@ -1,6 +1,40 @@
 using FastGaussQuadrature
 using SpecialFunctions
 using LinearAlgebra
+using HypergeometricFunctions
+using Roots
+
+function stress_parameter_3D(λ::Float64)
+    return 2.0 - Base.MathConstants.γ + 2.0 * λ^2 / 3.0 * pFq([1.0, 1.0], [2.0, 2.5], -λ^2) - log(4.0 * λ^2)
+end
+
+function amplification_factor_3D(T::Float64)
+    return abs(fzero(λ->stress_parameter_3D(λ) - T, 1.0))
+end
+
+function low_T_slip_profile_3D(r::Float64, T::Float64)::Float64
+    return 2.0 * sqrt(2.0 * T) / π * (acos(abs(r)) / abs(r) - sqrt(1.0 - r^2))
+end
+
+function high_T_slip_profile_3D(r::Float64)::Float64
+    return 8.0 / π * (sqrt(1.0 - r^2) - abs(r) * acos(abs(r)))
+end
+
+function injection_analytical_3D(T::Float64, N::Int64=100)
+    r = collect(range(0.0, stop=1.0, length=N))[2:end]
+
+    λ = amplification_factor_3D(T)
+
+    if (T > 2.0)
+        δ = high_T_slip_profile_3D.(r)
+    elseif (T < 0.1)
+        δ = low_T_slip_profile_3D.(r, T)
+    else
+        throw(ErrorException("Solution not implemented yet!"))
+    end
+
+    return (r, δ, λ)
+end
 
 """
     injection_analytical_gs(T::Float64, N::Int64 = 100)
