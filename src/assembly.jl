@@ -221,10 +221,7 @@ function computePressureCoupling!(problem::AbstractDDProblem{T}, time::T, timer:
     # Check if problem has pressure coupling
     if hasFluidCoupling(problem)
         @timeit timer "Pressure update" begin
-            # Loop over elements
-            Threads.@threads for idx in eachindex(problem.mesh.elems)
-                @inbounds updatePressure!(problem.fluid_coupling[1], problem.mesh.elems[idx].X, time, idx)
-            end
+            updatePressure!(problem.fluid_coupling[1], [problem.mesh.elems[idx].X for idx in eachindex(problem.mesh.elems)], time)
         end
     end
 

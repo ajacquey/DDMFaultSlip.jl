@@ -38,10 +38,10 @@ mutable struct AuxVariable{T<:Real} <: AbstractVariable{T}
     end
 end
 
-function default_ic(X::Point2D{T}) where {T<:Real}
-    return 0.0
+function default_ic(X::Vector{Point2D{T}}) where {T<:Real}
+    return zeros(length(X))
 end
 
-function default_ic(X::Point3D{T}) where {T<:Real}
-    return 0.0
+function default_ic(X::Vector{Point3D{T}}) where {T<:Real}
+    return zeros(length(X))
 end

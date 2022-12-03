@@ -20,23 +20,23 @@ kₙ = μ / h
 kₛ = μ / h
 
 function σ₀(X)
-    return 1.0
+    return ones(length(X))
 end
 
-function p_func_2D(X::SVector{2,T}, time::T)::T where {T<:Real}
-    return Δp * erfc(abs(X[1]) / sqrt(α * time))
+function p_func_2D(X::Vector{SVector{2,T}}, time::T)::Vector{T} where {T<:Real}
+    return Δp * erfc.([abs(X[idx][1]) for idx in eachindex(X)] / sqrt(α * time))
 end
 
-function p_func_3D(X::SVector{3,T}, time::T)::T where {T<:Real}
-    return Δpᵢ * expint(1, norm(X)^2 / (α * time))
+function p_func_3D(X::Vector{SVector{3,T}}, time::T)::Vector{T} where {T<:Real}
+    return Δpᵢ * expint.(1, [norm(X[idx])^2 for idx in eachindex(X)] / (α * time))
 end
 
 function DD_analytical_2D(mesh::DDMesh1D{T}, time::T)::Vector{T} where {T<:Real}
-    return -p_func_2D.([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
+    return -p_func_2D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
 function DD_analytical_3D(mesh::DDMesh2D{T}, time::T)::Vector{T} where {T<:Real}
-    return -p_func_3D.([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
+    return -p_func_3D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
 @testset "Fluid coupling problems" begin

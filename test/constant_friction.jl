@@ -24,23 +24,23 @@ kₙ = μ / h
 kₛ = μ / h
 
 function σ₀(X)
-    return 1.0
+    return ones(length(X))
 end
 
-function p_func_2D(X::SVector{2,T}, time::T)::T where {T<:Real}
-    return Δp * erfc(abs(X[1]) / sqrt(α * time))
+function p_func_2D(X::Vector{SVector{2,T}}, time::T)::Vector{T} where {T<:Real}
+    return Δp * erfc.([abs(X[idx][1]) for idx in eachindex(X)] / sqrt(α * time))
 end
 
-function p_func_3D(X::SVector{3,T}, time::T)::T where {T<:Real}
-    return Δpᵢ * expint(1, norm(X)^2 / (α * time))
+function p_func_3D(X::Vector{SVector{3,T}}, time::T)::Vector{T} where {T<:Real}
+    return Δpᵢ * expint.(1, [norm(X[idx])^2 for idx in eachindex(X)] / (α * time))
 end
 
 function ϵ_analytical_2D(mesh::DDMesh1D{T}, time::T)::Vector{T} where {T<:Real}
-    return -p_func_2D.([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
+    return -p_func_2D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
 function ϵ_analytical_3D(mesh::DDMesh2D{T}, time::T)::Vector{T} where {T<:Real}
-    return -p_func_3D.([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
+    return -p_func_3D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
 function δ_analytical_2D(mesh::DDMesh1D{T}, Ts::T, time::T)::Vector{T} where {T<:Real}
@@ -95,7 +95,7 @@ end
         # Initial shear stress
         Ts = 0.1
         function τ₀(X)
-            return f * (σ₀(X) - Δp * Ts)
+            return f * (σ₀(X) .- Δp * Ts)
         end
 
         # Create mesh
@@ -136,7 +136,7 @@ end
         # Initial shear stress
         Ts = 0.5
         function τ₀(X)
-            return f * (σ₀(X) - Δp * Ts)
+            return f * (σ₀(X) .- Δp * Ts)
         end
 
         # Create mesh
@@ -177,7 +177,7 @@ end
         # Initial shear stress
         Ts = 0.9
         function τ₀(X)
-            return f * (σ₀(X) - Δp * Ts)
+            return f * (σ₀(X) .- Δp * Ts)
         end
 
         # Create mesh
@@ -217,11 +217,11 @@ end
     @testset "3D: T = 0.01" begin
         Ts = 0.01
         function τ₀_x(X)
-            return f * (σ₀(X) - Δpᵢ * Ts)
+            return f * (σ₀(X) .- Δpᵢ * Ts)
         end
 
         function τ₀_y(X)
-            return 0.0
+            return zeros(length(X))
         end
 
         # Create mesh
@@ -257,11 +257,11 @@ end
     @testset "3D: T = 4.0" begin
         Ts = 4.0
         function τ₀_x(X)
-            return f * (σ₀(X) - Δpᵢ * Ts)
+            return f * (σ₀(X) .- Δpᵢ * Ts)
         end
 
         function τ₀_y(X)
-            return 0.0
+            return zeros(length(X))
         end
 
         # Create mesh

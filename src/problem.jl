@@ -286,27 +286,27 @@ function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::SVector{2,Fun
 end
 
 function applyNormalDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
-    problem.ϵ.value = problem.ϵ.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+    problem.ϵ.value = problem.ϵ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
     problem.ϵ.value_old = copy(problem.ϵ.value)
-    problem.σ.value = problem.σ.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+    problem.σ.value = problem.σ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
     problem.σ.value_old = copy(problem.σ.value)
     return nothing
 end
 
 function applyShearDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
     if (isa(problem, ShearDDProblem2D) || isa(problem, CoupledDDProblem2D))
-        problem.δ.value = problem.δ.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+        problem.δ.value = problem.δ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.δ.value_old = copy(problem.δ.value)
-        problem.τ.value = problem.τ.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+        problem.τ.value = problem.τ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.τ.value_old = copy(problem.τ.value)
     elseif (isa(problem, ShearDDProblem3D) || isa(problem, CoupledDDProblem3D))
-        problem.δ_x.value = problem.δ_x.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+        problem.δ_x.value = problem.δ_x.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.δ_x.value_old = copy(problem.δ_x.value)
-        problem.τ_x.value = problem.τ_x.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+        problem.τ_x.value = problem.τ_x.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.τ_x.value_old = copy(problem.τ_x.value)
-        problem.δ_y.value = problem.δ_y.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+        problem.δ_y.value = problem.δ_y.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.δ_y.value_old = copy(problem.δ_y.value)
-        problem.τ_y.value = problem.τ_y.func_ic.([problem.mesh.elems[i].X for i in 1:length(problem.mesh.elems)])
+        problem.τ_y.value = problem.τ_y.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.τ_y.value_old = copy(problem.τ_y.value)
     else
         throw(ErrorException("No shear IC in this problem!"))

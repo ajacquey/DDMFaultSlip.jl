@@ -13,7 +13,7 @@ mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling{T}
     " Constructor"
     function FunctionPressure(mesh::DDMesh{T}, fct::Function; fct_ic::Function=default_fc_ic) where {T<:Real}
         # Initial pressure value
-        p = fct_ic.([mesh.elems[i].X for i in 1:length(mesh.elems)])
+        p = fct_ic([mesh.elems[i].X for i in eachindex(mesh.elems)])
         # Old pressure value
         p_old = copy(p)
 
@@ -21,15 +21,15 @@ mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling{T}
     end
 end
 
-function updatePressure!(fc::FunctionPressure{T}, X, time::T, idx::Int) where {T<:Real}
-    fc.p[idx] = fc.fct(X, time)
+function updatePressure!(fc::FunctionPressure{T}, X, time::T) where {T<:Real}
+    fc.p = fc.fct(X, time)
     return nothing
 end
 
-function default_fc_ic(X::Point2D{T}) where {T<:Real}
-    return 0.0
+function default_fc_ic(X::Vector{Point2D{T}}) where {T<:Real}
+    return zeros(length(X))
 end
 
-function default_fc_ic(X::Point3D{T}) where {T<:Real}
-    return 0.0
+function default_fc_ic(X::Vector{Point3D{T}}) where {T<:Real}
+    return zeros(length(X))
 end

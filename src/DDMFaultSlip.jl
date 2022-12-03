@@ -36,7 +36,7 @@ export FunctionPressure
 
 include("problem.jl")
 export NormalDDProblem, ShearDDProblem2D, ShearDDProblem3D, CoupledDDProblem2D, CoupledDDProblem3D
-export addNormalStressIC!, addShearStressIC!
+export addNormalDDIC!, addShearDDIC!, addNormalStressIC!, addShearStressIC!
 export addConstraint!
 export addFrictionConstraint!
 export addFluidCoupling!
