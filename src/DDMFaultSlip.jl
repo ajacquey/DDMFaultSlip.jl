@@ -56,12 +56,12 @@ export CSVMaximumOutput
 function run!(problem::AbstractDDProblem{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
-    nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10) where {T<:Real}
+    nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10, hmat_eta::T=3.0, hmat_atol::T=1.0e-06) where {T<:Real}
     # Timer
     timer = TimerOutput()
 
     # Initialize solver
-    @timeit timer "Initialize Solver" solver = DDSolver(problem; nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol)
+    @timeit timer "Initialize Solver" solver = DDSolver(problem; hmat_eta=hmat_eta, hmat_atol=hmat_atol, nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol)
 
     # Display some information about simulation
     if log
@@ -105,12 +105,12 @@ end
 function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
-    nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10) where {T<:Real}
+    nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10, hmat_eta::T=3.0, hmat_atol::T=1.0e-06) where {T<:Real}
     # Timer
     timer = TimerOutput()
 
     # Initialize solver
-    @timeit timer "Initialize Solver" solver = DDSolver(problem; nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol)
+    @timeit timer "Initialize Solver" solver = DDSolver(problem; hmat_eta=hmat_eta, hmat_atol=hmat_atol, nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol)
 
     # Display some information about simulation
     if log

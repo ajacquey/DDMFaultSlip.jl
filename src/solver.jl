@@ -24,7 +24,7 @@ mutable struct DDSolver{R,T<:Real}
     nl_rel_tol::T
 
     " Constructor for NormalDDProblem"
-    function DDSolver(problem::NormalDDProblem{T}; hmat_eta::T=3.0, hmat_atol::T=0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::NormalDDProblem{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
         mat = NormalDDJacobian(problem; eta=hmat_eta, atol=hmat_atol)
         n_dof = size(mat, 1)
 
@@ -33,7 +33,7 @@ mutable struct DDSolver{R,T<:Real}
     end
 
     " Constructor for ShearDDProblem2D"
-    function DDSolver(problem::ShearDDProblem2D{T}; hmat_eta::T=3.0, hmat_atol::T=0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::ShearDDProblem2D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
         mat = ShearDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol)
         n_dof = size(mat, 1)
 
@@ -42,7 +42,7 @@ mutable struct DDSolver{R,T<:Real}
     end
 
     " Constructor for ShearDDProblem3D"
-    function DDSolver(problem::ShearDDProblem3D{T}; hmat_eta::T=3.0, hmat_atol::T=0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::ShearDDProblem3D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
         if (problem.ν != 0.0)
             mat = ShearDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol)
         else
@@ -55,7 +55,7 @@ mutable struct DDSolver{R,T<:Real}
     end
 
     " Constructor for CoupledDDProblem2D"
-    function DDSolver(problem::CoupledDDProblem2D{T}; hmat_eta::T=3.0, hmat_atol::T=0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::CoupledDDProblem2D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
         mat = CoupledDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol)
         n_dof = size(mat, 1)
 
@@ -64,7 +64,7 @@ mutable struct DDSolver{R,T<:Real}
     end
 
     " Constructor for CoupledDDProblem3D"
-    function DDSolver(problem::CoupledDDProblem3D{T}; hmat_eta::T=3.0, hmat_atol::T=0.0, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::CoupledDDProblem3D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
         if (problem.ν != 0.0)
             mat = CoupledDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol)
         else
