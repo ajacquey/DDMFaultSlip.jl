@@ -57,7 +57,7 @@ function advanceTime!(exec::TransientExecutioner{T}, time_stepper::AbstractTimeS
     # Update time old
     exec.time_old = exec.time
     # Update time
-    exec.time = get_time(time_stepper, exec.time_step)
+    exec.time = get_time(time_stepper, exec.time_step, exec.time_old)
     # Update dt
     exec.dt = exec.time - exec.time_old
 

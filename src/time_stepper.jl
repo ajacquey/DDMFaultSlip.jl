@@ -1,6 +1,34 @@
 abstract type AbstractTimeStepper{T<:Real} end
 
-mutable struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
+struct ConstantDT{T<:Real} <: AbstractTimeStepper{T}
+    " Start time"
+    start_time::T
+
+    " End time"
+    end_time::T
+
+    " Time step size"
+    dt::T
+
+    " Tolerance"
+    tol::T
+
+    " Constructor"
+    function ConstantDT(start_time::T, end_time::T, n::Int; tol::T=1.0e-08) where {T<:Real}
+        dt = (end_time - start_time) / n
+        return new{T}(start_time, end_time, dt, tol)
+    end
+end
+
+function get_time(ts::ConstantDT{T}, it::Int, t_old::T) where {T<:Real}
+    if (t_old + ts.dt < ts.end_time)
+        return t_old + ts.dt
+    else
+        return ts.end_time
+    end
+end
+
+struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
     " Start time"
     start_time::T
 
@@ -39,6 +67,6 @@ mutable struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
     end
 end
 
-function get_time(ts::TimeSequence{T}, it::Int) where {T<:Real}
+function get_time(ts::TimeSequence{T}, it::Int, t_old::T) where {T<:Real}
     return ts.time_seq[it+1]
 end

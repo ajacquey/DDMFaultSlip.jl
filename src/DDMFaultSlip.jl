@@ -18,6 +18,7 @@ include("collocation.jl")
 export DD3DShearElasticMatrix
 
 include("time_stepper.jl")
+export ConstantDT
 export TimeSequence
 
 include("executioner.jl")
@@ -30,6 +31,7 @@ export FunctionConstraint
 include("constraints/friction.jl")
 export ConstantYield
 export ConstantFriction
+export SlipWeakeningFriction
 
 include("fluid_coupling.jl")
 export FunctionPressure
@@ -83,16 +85,18 @@ function run!(problem::AbstractDDProblem{T};
     end
 
     # Steady state problem
-    solve!(solver, problem, timer; log=log, linear_log=linear_log)
+    converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
 
-    # Update "fake" executioner
-    advanceTime!(exec)
+    if converged
+        # Update "fake" executioner
+        advanceTime!(exec)
 
-    # Execute outputs
-    if ~isempty(outputs)
-        @timeit timer "Execute Outputs" executeOutputs!(outputs, problem, exec, output_initial)
+        # Execute outputs
+        if ~isempty(outputs)
+            @timeit timer "Execute Outputs" executeOutputs!(outputs, problem, exec, output_initial)
+        end
     end
-
+    
     # End of simulation information - TimerOutputs
     if log
         print_timer(timer, title="Performance graph")
@@ -105,7 +109,8 @@ end
 function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
-    nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10, hmat_eta::T=3.0, hmat_atol::T=1.0e-06) where {T<:Real}
+    nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10, dt_min::T=1.0e-14,
+    hmat_eta::T=3.0, hmat_atol::T=1.0e-06) where {T<:Real}
     # Timer
     timer = TimerOutput()
 
@@ -134,13 +139,19 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
         @timeit timer "Initialize Outputs" initializeOutputs!(outputs, problem, exec, output_initial)
     end
 
+    converged = true
     while exec.time < (time_stepper.end_time - time_stepper.tol)
-        # Update transient executioner
-        advanceTime!(exec, time_stepper)
+        if converged
+            # Update transient executioner
+            advanceTime!(exec, time_stepper)
 
-        # Save old state
-        @timeit timer "Reinitialize problem" reinit!(problem)
-
+            # Save old state
+            @timeit timer "Reinitialize problem" reinit!(problem)
+        else
+            exec.dt = exec.dt / 2.0
+            exec.time = exec.time_old + exec.dt
+        end
+    
         # Print time step information
         if log
             print_TimeStepInfo(exec)
@@ -149,15 +160,21 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
         # Pressure update
         computePressureCoupling!(problem, exec.time, timer)
         # Transient problem
-        solve!(solver, problem, timer; log=log, linear_log=linear_log)
+        converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
 
-        # Execute outputs
-        if ~isempty(outputs)
-            @timeit timer "Execute Outputs" executeOutputs!(outputs, problem, exec, output_initial)
+        if converged
+            # Execute outputs
+            if ~isempty(outputs)
+                @timeit timer "Execute Outputs" executeOutputs!(outputs, problem, exec, output_initial)
+            end
+
+            # Reinit solver
+            @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step=true)
         end
 
-        # Reinit solver
-        @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step=true)
+        if exec.dt < dt_min
+            throw(ErrorException("Simulation failed!"))
+        end
     end
 
     # End of simulation information - TimerOutputs

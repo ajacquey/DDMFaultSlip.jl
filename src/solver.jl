@@ -97,7 +97,7 @@ function print_NL_res(it::Int, r::T) where {T<:Real}
 end
 
 " Solve the problem using the IterativeSolvers package"
-function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput; log::Bool=true, linear_log::Bool=false) where {R,T<:Real}
+function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput; log::Bool=true, linear_log::Bool=false)::Bool where {R,T<:Real}
     ##### Newton loop #####
     # Non-linear iterations
     nl_iter = 0
@@ -120,13 +120,13 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
             if log
                 @printf("Solve converged with absolute tolerance!\n")
             end
-            return nothing
+            return true
         end
         if (r / r0 <= solver.nl_rel_tol)
             if log
                 @printf("Solve converged with relative tolerance!\n")
             end
-            return nothing
+            return true
         end
         # Linear Solve
         @timeit timer "Solve" dx = linear_solve!(dx, solver, linear_log)
@@ -148,7 +148,8 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
     end
     # Error if exceeded maximum number of iterations
     if (nl_iter > solver.nl_max_it)
-        throw(ErrorException("Exceeded the maximum number of nonlinear iterations!"))
+        @printf("Solve diverged: exceeded the maximum number of nonlinear iterations!\n")
+        return false
     end
 end
 
