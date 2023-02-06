@@ -85,7 +85,7 @@ function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time:
         if (dt != 0.0)
             vtk["delta_dot", VTKCellData()] = cat((problem.δ_x.value - problem.δ_x.value_old) / dt, (problem.δ_y.value - problem.δ_y.value_old) / dt; dims=2)'
         else
-            vtk["delta_dot", VTKCellData()] = zeros(T, 2, length(problem.ϵ.value))
+            vtk["delta_dot", VTKCellData()] = zeros(T, 2, length(problem.δ.value))
         end
     end
     if hasFluidCoupling(problem)
