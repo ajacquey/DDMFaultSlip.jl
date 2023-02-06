@@ -45,6 +45,7 @@ export addFluidCoupling!
 export addOutput!
 
 include("jacobian.jl")
+export collocation_mul
 
 include("solver.jl")
 export DDSolver
