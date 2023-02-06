@@ -47,6 +47,7 @@ export addOutput!
 include("jacobian.jl")
 
 include("solver.jl")
+export DDSolver
 
 include("assembly.jl")
 

@@ -74,7 +74,7 @@ end
 
         # Elastic property
         μ = 1.0
-        ν = 0.0
+        ν = 0.25
 
         # Create problem
         problem = NormalDDProblem(mesh; μ=μ, ν=ν)
