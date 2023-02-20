@@ -23,10 +23,13 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     σ::AuxVariable{T}
 
     " A vector of Constraints"
-    constraints::Vector{AbstractConstraint}
+    constraints_ϵ::Vector{AbstractConstraint}
 
     " A vector of PressureCoupling"
     fluid_coupling::Vector{AbstractFluidCoupling}
+
+    " A vector of CohesiveZone"
+    cohesive::Vector{AbstractCohesiveZone}
 
     " Constructor"
     function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
@@ -35,6 +38,7 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
             AuxVariable(T, :σ, length(mesh.elems)),
             Vector{AbstractConstraint}(undef, 0),
             Vector{AbstractFluidCoupling}(undef, 0),
+            Vector{AbstractCohesiveZone}(undef, 0),
         )
     end
 end
@@ -59,7 +63,7 @@ mutable struct ShearDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     τ::AuxVariable{T}
 
     " A vector of Constraints"
-    constraints::Vector{AbstractConstraint}
+    constraints_δ::Vector{AbstractConstraint}
 
     " Constructor"
     function ShearDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
@@ -96,8 +100,11 @@ mutable struct ShearDDProblem3D{T<:Real} <: AbstractDDProblem{T}
     τ_y::AuxVariable{T}
 
     " A vector of vector of Constraints"
-    constraints_x::Vector{AbstractConstraint}
-    constraints_y::Vector{AbstractConstraint}
+    constraints_δx::Vector{AbstractConstraint}
+    constraints_δy::Vector{AbstractConstraint}
+
+    " A vector of CohesiveZone"
+    cohesive::Vector{AbstractCohesiveZone}
 
     " Constructor"
     function ShearDDProblem3D(mesh::DDMesh2D{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
@@ -108,6 +115,7 @@ mutable struct ShearDDProblem3D{T<:Real} <: AbstractDDProblem{T}
             AuxVariable(T, :τ_y, length(mesh.elems)),
             Vector{AbstractConstraint}(undef, 0),
             Vector{AbstractConstraint}(undef, 0),
+            Vector{AbstractCohesiveZone}(undef, 0),
         )
     end
 end
@@ -326,21 +334,46 @@ function applyIC!(problem::AbstractDDProblem{T}) where {T<:Real}
     return nothing
 end
 
+function hasConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    if hasproperty(problem, :constraints_ϵ)
+        if ~isempty(problem.constraints_ϵ)
+            return true
+        end
+    end
+    if hasproperty(problem, :constraints_δ)
+        if ~isempty(problem.constraints_δ)
+            return true
+        end   
+    end
+    if hasproperty(problem, :constraints_δx)
+        if ~isempty(problem.constraints_δx)
+            return true
+        end
+    end
+    if hasproperty(problem, :constraints_δy)
+        if ~isempty(problem.constraints_δy)
+            return true
+        end
+    end
+
+    return false
+end
+
 function addConstraint!(problem::NormalDDProblem{T}, cst::AbstractConstraint) where {T<:Real}
-    push!(problem.constraints, cst)
+    push!(problem.constraints_ϵ, cst)
     return nothing
 end
 
 function addConstraint!(problem::ShearDDProblem2D{T}, cst::AbstractConstraint) where {T<:Real}
-    push!(problem.constraints, cst)
+    push!(problem.constraints_δ, cst)
     return nothing
 end
 
 function addConstraint!(problem::ShearDDProblem3D{T}, sym::Symbol, cst::AbstractConstraint) where {T<:Real}
     if (sym == :x)
-        push!(problem.constraints_x, cst)
+        push!(problem.constraints_δx, cst)
     elseif (sym == :y)
-        push!(problem.constraints_y, cst)
+        push!(problem.constraints_δy, cst)
     else
         throw(ErrorException("No dimension noted $(sym)!"))
     end
@@ -407,6 +440,27 @@ function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupl
 
     # Add FluidCoupling
     push!(problem.fluid_coupling, pp)
+
+    return nothing
+end
+
+function hasCohesiveZoneConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    if hasproperty(problem, :cohesive)
+        return ~isempty(problem.cohesive)
+    else
+        return false
+    end
+
+end
+
+function addCohesiveConstraint!(problem::AbstractDDProblem{T}, cohesive::AbstractCohesiveZone{T}) where {T<:Real}
+    # Check if problem has cohesive zone
+    if (hasCohesiveZoneConstraint(problem))
+        throw(ErrorException("The problem already has a CohesiveZoneConstraint!"))
+    end
+
+    # Add CohesiveZone
+    push!(problem.cohesive, cohesive)
 
     return nothing
 end

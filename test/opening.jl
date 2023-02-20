@@ -41,10 +41,9 @@ end
 
         # Analytical solution
         ϵ_sol = ϵ_analytical_2D(mesh, μ)
-        # Error
-        err = mean(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol)
+
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=2.0e-02)
     end
     @testset "PWC 3D, ν = 0" begin
         # Create mesh
@@ -63,10 +62,9 @@ end
 
         # Analytical solution
         ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol)
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02)
     end
     @testset "PWC 3D, ν = 0.25" begin
         # Create mesh
@@ -85,10 +83,9 @@ end
 
         # Analytical solution
         ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol)
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02)
     end
 end
 

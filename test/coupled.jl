@@ -59,10 +59,9 @@ end
         # Analytical solutions
         ϵ_sol = ϵ_analytical_2D(mesh, μ)
         δ_sol = δ_analytical_2D(mesh, μ)
-        # Error
-        err = mean(vcat(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol, abs.(problem.δ.value - δ_sol) ./ δ_sol))
+
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=2.0e-02) && isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "Fake coupling 3D - x" begin
         # Create mesh
@@ -83,10 +82,9 @@ end
         # Analytical solutions
         ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
         δ_sol = δ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(vcat(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol, abs.(problem.δ_x.value - δ_sol) ./ δ_sol))
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02) && isapprox(problem.δ_x.value, δ_sol; rtol=4.0e-02)
     end
     @testset "Fake coupling 3D - y" begin
         # Create mesh
@@ -107,10 +105,9 @@ end
         # Analytical solutions
         ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
         δ_sol = δ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(vcat(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol, abs.(problem.δ_y.value - δ_sol) ./ δ_sol))
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02) && isapprox(problem.δ_y.value, δ_sol; rtol=4.0e-02)
     end
 end
 

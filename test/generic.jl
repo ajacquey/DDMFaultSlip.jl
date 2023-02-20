@@ -36,9 +36,10 @@ end
         # Analytical solution
         ϵ_sol = ϵ_analytical(mesh, μ)
         # Error
-        err = mean(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol)
+        # err = mean(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol)
         # Error less than 2%
-        @test err < 0.02
+        # @test err < 0.02
+        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=2.0e-02)
     end
 end
 

@@ -41,10 +41,9 @@ end
 
         # Analytical solution
         δ_sol = δ_analytical_2D(mesh, μ)
-        # Error
-        err = mean(abs.(problem.δ.value - δ_sol) ./ δ_sol)
+
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "PWC 3D, ν = 0, x" begin
         # Create mesh
@@ -63,10 +62,9 @@ end
 
         # Analytical solution
         δ_sol = δ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(abs.(problem.δ_x.value - δ_sol) ./ δ_sol)
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.δ_x.value, δ_sol; rtol=4.0e-02)
     end
     @testset "PWC 3D, ν = 0, y" begin
         # Create mesh
@@ -85,10 +83,9 @@ end
 
         # Analytical solution
         δ_sol = δ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(abs.(problem.δ_y.value - δ_sol) ./ δ_sol)
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.δ_y.value, δ_sol; rtol=4.0e-02)
     end
     @testset "PWC 3D, ν = 0.25, x" begin
         # Create mesh
@@ -107,10 +104,9 @@ end
 
         # Analytical solution
         δ_sol = δ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(abs.(problem.δ_x.value - δ_sol) ./ δ_sol)
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.δ_x.value, δ_sol; rtol=4.0e-02)
     end
     @testset "PWC 3D, ν = 0.25, y" begin
         # Create mesh
@@ -129,10 +125,9 @@ end
 
         # Analytical solution
         δ_sol = δ_analytical_3D(mesh, μ, ν)
-        # Error
-        err = mean(abs.(problem.δ_y.value - δ_sol) ./ δ_sol)
+
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.δ_y.value, δ_sol; rtol=4.0e-02)
     end
 end
 

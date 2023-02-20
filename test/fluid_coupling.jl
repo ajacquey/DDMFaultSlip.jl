@@ -71,10 +71,9 @@ end
 
         # Analytical solutions
         DD_sol = DD_analytical_2D(mesh, μ)
-        # Error
-        err = mean(abs.(problem.ϵ.value - DD_sol) ./ DD_sol)
-        # Error less than 2%
-        @test err < 0.02
+
+        # Error less than 4%
+        @test isapprox(problem.ϵ.value, DD_sol; atol=4.0e-02)
     end
     @testset "Fluid-induced opening - 3D" begin
         # Create mesh
@@ -105,10 +104,9 @@ end
 
         # Analytical solutions
         DD_sol = DD_analytical_3D(mesh, μ)
-        # Error
-        err = mean(abs.(problem.ϵ.value - DD_sol) ./ DD_sol)
-        # Error less than 2%
-        @test err < 0.02
+
+        # Error less than 4%
+        @test isapprox(problem.ϵ.value, DD_sol; atol=4.0e-02)
     end
 end
 

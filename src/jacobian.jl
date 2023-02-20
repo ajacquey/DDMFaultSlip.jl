@@ -81,8 +81,8 @@ mutable struct ShearDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     Esxy::HMatrix{R,T}
 
     " Local jacobian"
-    jac_loc_x::Vector{T}
-    jac_loc_y::Vector{T}
+    jac_loc_x::Vector{Vector{T}}
+    jac_loc_y::Vector{Vector{T}}
 
     " Constructor"
     function ShearDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
@@ -101,8 +101,16 @@ mutable struct ShearDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         Esyy = assemble_hmat(Kyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esxy = assemble_hmat(Kxy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
+        # Local jacobian
+        jac_loc_x = Vector{Vector{T}}(undef, 2)
+        jac_loc_x[1] = zeros(T, size(Esxx, 1))
+        jac_loc_x[2] = zeros(T, size(Esxx, 1))
+        jac_loc_y = Vector{Vector{T}}(undef, 2)
+        jac_loc_y[1] = zeros(T, size(Esxx, 1))
+        jac_loc_y[2] = zeros(T, size(Esxx, 1))
+
         R = typeof(Esxx.coltree)
-        return new{R,T}(Esxx, Esyy, Esxy, zeros(T, size(Esxx, 1)), zeros(T, size(Esxx, 1)))
+        return new{R,T}(Esxx, Esyy, Esxy, jac_loc_x, jac_loc_y)
     end
 end
 
@@ -111,8 +119,10 @@ function Base.size(J::ShearDDJacobian3D{R,T}) where {R,T<:Real}
 end
 
 function reinitLocalJacobian!(J::ShearDDJacobian3D{R,T}) where {R,T<:Real}
-    fill!(J.jac_loc_x, 0.0)
-    fill!(J.jac_loc_y, 0.0)
+    fill!(J.jac_loc_x[1], 0.0)
+    fill!(J.jac_loc_x[2], 0.0)
+    fill!(J.jac_loc_y[1], 0.0)
+    fill!(J.jac_loc_y[2], 0.0)
 end
 
 mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
@@ -121,8 +131,8 @@ mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     Esyy::HMatrix{R,T}
 
     " Local jacobian"
-    jac_loc_x::Vector{T}
-    jac_loc_y::Vector{T}
+    jac_loc_x::Vector{Vector{T}}
+    jac_loc_y::Vector{Vector{T}}
 
     " Constructor"
     function ShearNoNuDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
@@ -139,8 +149,16 @@ mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         Esxx = assemble_hmat(Kxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esyy = assemble_hmat(Kyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
+        # Local jacobian
+        jac_loc_x = Vector{Vector{T}}(undef, 2)
+        jac_loc_x[1] = zeros(T, size(Esxx, 1))
+        jac_loc_x[2] = zeros(T, size(Esxx, 1))
+        jac_loc_y = Vector{Vector{T}}(undef, 2)
+        jac_loc_y[1] = zeros(T, size(Esxx, 1))
+        jac_loc_y[2] = zeros(T, size(Esxx, 1))
+
         R = typeof(Esxx.coltree)
-        return new{R,T}(Esxx, Esyy, zeros(T, size(Esxx, 1)), zeros(T, size(Esxx, 1)))
+        return new{R,T}(Esxx, Esyy, jac_loc_x, jac_loc_y)
     end
 end
 
@@ -149,8 +167,10 @@ function Base.size(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
 end
 
 function reinitLocalJacobian!(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
-    fill!(J.jac_loc_x, 0.0)
-    fill!(J.jac_loc_y, 0.0)
+    fill!(J.jac_loc_x[1], 0.0)
+    fill!(J.jac_loc_x[2], 0.0)
+    fill!(J.jac_loc_y[1], 0.0)
+    fill!(J.jac_loc_y[2], 0.0)
 end
 
 mutable struct CoupledDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
@@ -377,7 +397,10 @@ function LinearAlgebra.mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T},
     collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
-    y .+= vcat(J.jac_loc_x, J.jac_loc_y) .* x
+    n = div(length(x), 2)
+    y .+= vcat(J.jac_loc_x[1], J.jac_loc_y[2]) .* x
+    y[1:n] .+= J.jac_loc_x[2] .* x[(n+1):(2*n)]
+    y[(n+1):(2*n)] .+= J.jac_loc_y[1] .* x[1:n]
 
     return y
 end
@@ -391,7 +414,10 @@ function LinearAlgebra.mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::
     collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
-    y .+= vcat(J.jac_loc_x, J.jac_loc_y) .* x
+    n = div(length(x), 2)
+    y .+= vcat(J.jac_loc_x[1], J.jac_loc_y[2]) .* x
+    y[1:n] .+= J.jac_loc_x[2] .* x[(n+1):(2*n)]
+    y[(n+1):(2*n)] .+= J.jac_loc_y[1] .* x[1:n]
 
     return y
 end

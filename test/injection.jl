@@ -46,10 +46,9 @@ include("injection_utils.jl")
 
         # Analytical solution
         δ_sol = δ_analytical(mesh)
-        # Error
-        err = mean(abs.(problem.δ.value - δ_sol) ./ δ_sol)
+
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "Scaled 2D - T = 0.5" begin
         T = 0.5
@@ -87,10 +86,9 @@ include("injection_utils.jl")
 
         # Analytical solution
         δ_sol = δ_analytical(mesh)
-        # Error
-        err = mean(abs.(problem.δ.value - δ_sol) ./ δ_sol)
+
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "Scaled 2D - T = 0.9" begin
         T = 0.9
@@ -128,10 +126,9 @@ include("injection_utils.jl")
 
         # Analytical solution
         δ_sol = δ_analytical(mesh)
-        # Error
-        err = mean(abs.(problem.δ.value - δ_sol) ./ δ_sol)
+
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
 end
 

@@ -9,7 +9,6 @@ function applyFrictionalConstraints(cst::AbstractFriction{T}, Δu::SVector{N,T},
     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
     # Pre return map update
     preReturnMap(cst, u_old, Δu)
-    # preReturnMap(cst, u_old)
 
     # Check yield conditions
     y = yieldFunction(cst, σ_tr, τ_tr, 0.0)

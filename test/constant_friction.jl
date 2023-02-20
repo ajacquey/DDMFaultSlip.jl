@@ -127,10 +127,8 @@ end
         # Analytical solutions
         δ_sol = δ_analytical_2D(mesh, Ts, time_seq[end])
 
-        # Error
-        err = calculateError(problem.δ.value, δ_sol)
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "2D: T = 0.5" begin
         # Initial shear stress
@@ -168,10 +166,8 @@ end
         # Analytical solutions
         δ_sol = δ_analytical_2D(mesh, Ts, time_seq[end])
 
-        # Error
-        err = calculateError(problem.δ.value, δ_sol)
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "2D: T = 0.9" begin
         # Initial shear stress
@@ -209,10 +205,8 @@ end
         # Analytical solution
         δ_sol = δ_analytical_2D(mesh, Ts, time_seq[end])
 
-        # Error
-        err = calculateError(problem.δ.value, δ_sol)
         # Error less than 2%
-        @test err < 0.02
+        @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "3D: T = 0.01" begin
         Ts = 0.01
@@ -249,10 +243,8 @@ end
         # Analytical solutions
         δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
 
-        # Error
-        err = calculateError(problem.δ_x.value, δ_sol)
-        # Error less than 5%
-        @test err < 0.05
+        # Error less than 5.0%
+        @test isapprox(problem.δ_x.value, δ_sol; atol=5.0e-02)
     end
     @testset "3D: T = 4.0" begin
         Ts = 4.0
@@ -289,10 +281,8 @@ end
         # Analytical solutions
         δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
 
-        # Error
-        err = calculateError(problem.δ_x.value, δ_sol)
         # Error less than 4%
-        @test err < 0.04
+        @test isapprox(problem.δ_x.value, δ_sol; rtol=4.0e-02)
     end
 end
 

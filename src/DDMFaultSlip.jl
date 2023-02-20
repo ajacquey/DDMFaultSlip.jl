@@ -33,6 +33,9 @@ export ConstantYield
 export ConstantFriction
 export SlipWeakeningFriction
 
+include("constraints/cohesive_zone.jl")
+export DugdaleCohesiveZone
+
 include("fluid_coupling.jl")
 export FunctionPressure
 
@@ -42,6 +45,7 @@ export addNormalDDIC!, addShearDDIC!, addNormalStressIC!, addShearStressIC!
 export addConstraint!
 export addFrictionConstraint!
 export addFluidCoupling!
+export addCohesiveConstraint!
 export addOutput!
 
 include("jacobian.jl")
