@@ -78,7 +78,7 @@ mutable struct DDSolver{R,T<:Real}
 end
 
 function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}
-    dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log=true, abstol=1.0e-10, reltol=1.0e-10)
+    dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log=true, abstol=1.0e-10, reltol=1.0e-10, max_mv_products=200)
 
     if log
         if ch.isconverged
