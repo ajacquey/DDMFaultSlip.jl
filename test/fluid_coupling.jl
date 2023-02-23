@@ -2,7 +2,6 @@ module TestFluidCoupling
 
 using DDMFaultSlip
 using StaticArrays
-using Statistics
 using SpecialFunctions
 using LinearAlgebra
 using Test

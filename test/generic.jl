@@ -2,7 +2,6 @@ module TestGeneric
 
 using DDMFaultSlip
 using StaticArrays
-using Statistics
 using Test
 
 function σ_cst(X, time::T) where {T<:Real}

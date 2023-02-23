@@ -15,7 +15,7 @@ mutable struct DDSolver{R,T<:Real}
     initialized::Bool
 
     " Maximum number of nonlinear iterations"
-    nl_max_it::Int64
+    nl_max_it::Int
 
     " Nonlinear absolute tolerance"
     nl_abs_tol::T
@@ -23,26 +23,67 @@ mutable struct DDSolver{R,T<:Real}
     " Nonlinear relative tolerance"
     nl_rel_tol::T
 
+    " Linear solver"
+    l_solver::String
+
+    " Maximum number of linear iterations"
+    l_max_it::Int
+
+    " Linear absolute tolerance"
+    l_abs_tol::T
+
+    " Linear relative tolerance"
+    l_rel_tol::T
+
+    " Check if linear solver is supportted"
+    function checkLinearSolver(l_solver)
+        # Check if linear solver is provided
+        supported_linear_solver = ["bicgstabl", "gmres", "idrs"]
+        if ~(l_solver in supported_linear_solver)
+            throw(ErrorException("The linear solver $(l_solver) is not supported!"))
+        end
+        return nothing
+    end
+
     " Constructor for NormalDDProblem"
-    function DDSolver(problem::NormalDDProblem{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::NormalDDProblem{T};
+        hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
+        l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         mat = NormalDDJacobian(problem; eta=hmat_eta, atol=hmat_atol)
         n_dof = size(mat, 1)
 
+        # Check if linear solver is provided
+        checkLinearSolver(l_solver)
+
         R = typeof(mat.En.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+            nl_max_it, nl_abs_tol, nl_rel_tol,
+            l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
 
     " Constructor for ShearDDProblem2D"
-    function DDSolver(problem::ShearDDProblem2D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::ShearDDProblem2D{T};
+        hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
+        l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         mat = ShearDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol)
         n_dof = size(mat, 1)
 
+        # Check if linear solver is provided
+        checkLinearSolver(l_solver)
+
         R = typeof(mat.Es.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+            nl_max_it, nl_abs_tol, nl_rel_tol,
+            l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
 
     " Constructor for ShearDDProblem3D"
-    function DDSolver(problem::ShearDDProblem3D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::ShearDDProblem3D{T};
+        hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
+        l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         if (problem.ν != 0.0)
             mat = ShearDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol)
         else
@@ -50,21 +91,37 @@ mutable struct DDSolver{R,T<:Real}
         end
         n_dof = size(mat, 1)
 
+        # Check if linear solver is provided
+        checkLinearSolver(l_solver)
+
         R = typeof(mat.Esxx.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+            nl_max_it, nl_abs_tol, nl_rel_tol,
+            l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
 
     " Constructor for CoupledDDProblem2D"
-    function DDSolver(problem::CoupledDDProblem2D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::CoupledDDProblem2D{T}; 
+        hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
+        l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         mat = CoupledDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol)
         n_dof = size(mat, 1)
 
+        # Check if linear solver is provided
+        checkLinearSolver(l_solver)
+
         R = typeof(mat.E.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+            nl_max_it, nl_abs_tol, nl_rel_tol,
+            l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
 
     " Constructor for CoupledDDProblem3D"
-    function DDSolver(problem::CoupledDDProblem3D{T}; hmat_eta::T=3.0, hmat_atol::T=1.0e-06, nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int) where {T<:Real}
+    function DDSolver(problem::CoupledDDProblem3D{T}; 
+        hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
+        l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         if (problem.ν != 0.0)
             mat = CoupledDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol)
         else
@@ -72,13 +129,24 @@ mutable struct DDSolver{R,T<:Real}
         end
         n_dof = size(mat, 1)
 
+        # Check if linear solver is provided
+        checkLinearSolver(l_solver)
+
         R = typeof(mat.Esxx.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false, nl_max_it, nl_abs_tol, nl_rel_tol)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+            nl_max_it, nl_abs_tol, nl_rel_tol,
+            l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
 end
 
 function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}
-    dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log=true, abstol=1.0e-10, reltol=1.0e-10, max_mv_products=200)
+    if solver.l_solver == "bicgstabl"
+        dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, max_mv_products=4*solver.l_max_it)
+    elseif solver.l_solver == "gmres"
+        dx, ch = gmres!(dx, solver.mat, -solver.rhs; log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, maxiter=solver.l_max_it)
+    elseif solver.l_solver == "idrs"
+        dx, ch = idrs!(dx, solver.mat, -solver.rhs; log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, maxiter=solver.l_max_it)
+    end
 
     if log
         if ch.isconverged

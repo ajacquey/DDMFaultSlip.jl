@@ -4,7 +4,6 @@ using DDMFaultSlip
 using StaticArrays
 using Interpolations
 using SpecialFunctions
-using Statistics
 using Test
 
 include("injection_utils.jl")

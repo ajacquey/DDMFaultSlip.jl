@@ -2,7 +2,6 @@ module TestConstantFriction
 
 using DDMFaultSlip
 using StaticArrays
-using Statistics
 using SpecialFunctions
 using Interpolations
 using LinearAlgebra

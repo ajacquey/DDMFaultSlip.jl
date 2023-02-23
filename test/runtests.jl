@@ -12,4 +12,5 @@ using Test
     include("slip_weakening_friction.jl")
     include("dugdale.jl")
     include("outputs.jl")
+    include("linear_solver.jl")
 end

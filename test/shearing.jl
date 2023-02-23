@@ -2,7 +2,6 @@ module TestShearing
 
 using DDMFaultSlip
 using StaticArrays
-using Statistics
 using Test
 
 function τ_cst(X, time::T) where {T<:Real}
