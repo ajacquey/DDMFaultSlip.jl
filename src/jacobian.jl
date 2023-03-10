@@ -245,7 +245,7 @@ mutable struct CoupledDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         # Compatibility
         comp = PartialACA(; atol=atol)
         # Assemble H-matrix
-        En = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        En = assemble_hmat(Kn, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esxx = assemble_hmat(Ksxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esyy = assemble_hmat(Ksyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
         Esxy = assemble_hmat(Ksxy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
