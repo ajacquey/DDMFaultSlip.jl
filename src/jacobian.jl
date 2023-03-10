@@ -464,7 +464,7 @@ function LinearAlgebra.mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x
     # Add local jacobian contributions
     n = div(length(x), 3)
     y .+= vcat(J.jac_loc_ϵ[1], J.jac_loc_δx[2], J.jac_loc_δy[3]) .* x
-    y[1:n] .+= J.jac_loc_ϵ[2] .* x[(n+1):(2*n)] .+ J.jac_loc_ε[3] .* x[(2*n+1):(3*n)]
+    y[1:n] .+= J.jac_loc_ϵ[2] .* x[(n+1):(2*n)] .+ J.jac_loc_ϵ[3] .* x[(2*n+1):(3*n)]
     y[(n+1):(2*n)] .+= J.jac_loc_δx[1] .* x[1:n] .+ J.jac_loc_δx[3] .* x[(2*n+1):(3*n)]
     y[(2*n+1):(3*n)] .+= J.jac_loc_δy[1] .* x[1:n] .+ J.jac_loc_δy[2] .* x[(n+1):(2*n)]
 
