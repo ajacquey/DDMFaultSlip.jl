@@ -530,7 +530,8 @@ function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian2D{R,T}, x::
 end
 
 " collocation_mul! function for CoupledDDJacobian3D"
-function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}) where {R,T<:Real}
+function collocation_mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
+    global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     # Size of HMatrix
     n = size(J.En, 1)
 
