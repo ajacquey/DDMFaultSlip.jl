@@ -239,7 +239,7 @@ mutable struct CoupledDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         Ksyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
         Ksxy = DD3DShearElasticMatrixXY(problem.mesh.elems, problem.μ, problem.ν)
         # Cluster tree
-        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(K.e)])
+        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(Kn.e)])
         # Admissibility
         adm = StrongAdmissibilityStd(; eta=eta)
         # Compatibility
