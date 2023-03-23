@@ -1,7 +1,4 @@
 mutable struct DDSolver{R,T<:Real}
-    # " The Problem this solver will act on"
-    # problem::AbstractDDProblem{T}
-
     " The jacobian matrix"
     mat::AbstractDDJacobian{R,T}
 
@@ -10,9 +7,6 @@ mutable struct DDSolver{R,T<:Real}
 
     " The solution vector"
     solution::Vector{T}
-
-    " Whether or not this Solver has been initialized"
-    initialized::Bool
 
     " Maximum number of nonlinear iterations"
     nl_max_it::Int
@@ -48,16 +42,17 @@ mutable struct DDSolver{R,T<:Real}
     " Constructor for NormalDDProblem"
     function DDSolver(problem::NormalDDProblem{T};
         hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        pc::Bool=true, pc_atol::T=1.0e-2,
         nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
         l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
-        mat = NormalDDJacobian(problem; eta=hmat_eta, atol=hmat_atol)
+        mat = NormalDDJacobian(problem; eta=hmat_eta, atol=hmat_atol, pc=pc, pc_atol=pc_atol)
         n_dof = size(mat, 1)
 
         # Check if linear solver is provided
         checkLinearSolver(l_solver)
 
         R = typeof(mat.En.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof),
             nl_max_it, nl_abs_tol, nl_rel_tol,
             l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
@@ -65,16 +60,17 @@ mutable struct DDSolver{R,T<:Real}
     " Constructor for ShearDDProblem2D"
     function DDSolver(problem::ShearDDProblem2D{T};
         hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        pc::Bool=true, pc_atol::T=1.0e-2,
         nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
         l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
-        mat = ShearDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol)
+        mat = ShearDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol, pc=pc, pc_atol=pc_atol)
         n_dof = size(mat, 1)
 
         # Check if linear solver is provided
         checkLinearSolver(l_solver)
 
         R = typeof(mat.Es.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof),
             nl_max_it, nl_abs_tol, nl_rel_tol,
             l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
@@ -82,20 +78,21 @@ mutable struct DDSolver{R,T<:Real}
     " Constructor for ShearDDProblem3D"
     function DDSolver(problem::ShearDDProblem3D{T};
         hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        pc::Bool=true, pc_atol::T=1.0e-2,
         nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
         l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         if (problem.ν != 0.0)
-            mat = ShearDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol)
+            mat = ShearDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol, pc=pc, pc_atol=pc_atol)
         else
-            mat = ShearNoNuDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol)
+            mat = ShearNoNuDDJacobian3D(problem; eta=hmat_eta, atol=hmat_atol, pc=pc, pc_atol=pc_atol)
         end
         n_dof = size(mat, 1)
 
         # Check if linear solver is provided
         checkLinearSolver(l_solver)
 
-        R = typeof(mat.Esxx.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+        R = typeof(mat.Es.coltree)
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof),
             nl_max_it, nl_abs_tol, nl_rel_tol,
             l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
@@ -103,16 +100,17 @@ mutable struct DDSolver{R,T<:Real}
     " Constructor for CoupledDDProblem2D"
     function DDSolver(problem::CoupledDDProblem2D{T}; 
         hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        pc::Bool=true, pc_atol::T=1.0e-2,
         nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
         l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
-        mat = CoupledDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol)
+        mat = CoupledDDJacobian2D(problem; eta=hmat_eta, atol=hmat_atol, pc=pc, pc_atol=pc_atol)
         n_dof = size(mat, 1)
 
         # Check if linear solver is provided
         checkLinearSolver(l_solver)
 
         R = typeof(mat.E.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof),
             nl_max_it, nl_abs_tol, nl_rel_tol,
             l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
@@ -120,6 +118,7 @@ mutable struct DDSolver{R,T<:Real}
     " Constructor for CoupledDDProblem3D"
     function DDSolver(problem::CoupledDDProblem3D{T}; 
         hmat_eta::T=3.0, hmat_atol::T=1.0e-06,
+        pc::Bool=true, pc_atol::T=1.0e-2,
         nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
         l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         if (problem.ν != 0.0)
@@ -133,7 +132,7 @@ mutable struct DDSolver{R,T<:Real}
         checkLinearSolver(l_solver)
 
         R = typeof(mat.Esxx.coltree)
-        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof), false,
+        return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof),
             nl_max_it, nl_abs_tol, nl_rel_tol,
             l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
@@ -141,11 +140,11 @@ end
 
 function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}
     if solver.l_solver == "bicgstabl"
-        dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, max_mv_products=4*solver.l_max_it)
+        dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; Pl=solver.mat.Pl, log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, max_mv_products=4*solver.l_max_it)
     elseif solver.l_solver == "gmres"
-        dx, ch = gmres!(dx, solver.mat, -solver.rhs; log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, maxiter=solver.l_max_it)
+        dx, ch = gmres!(dx, solver.mat, -solver.rhs; Pl=solver.mat.Pl, log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, maxiter=solver.l_max_it)
     elseif solver.l_solver == "idrs"
-        dx, ch = idrs!(dx, solver.mat, -solver.rhs; log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, maxiter=solver.l_max_it)
+        dx, ch = idrs!(dx, solver.mat, -solver.rhs; Pl=solver.mat.Pl, log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, maxiter=solver.l_max_it)
     end
 
     if log
@@ -228,7 +227,11 @@ function Base.show(io::IO, solver::DDSolver{R,T}) where {R,T<:Real}
     @printf("  Use threads with HMatrix: ")
     @printf("%s", HMatrices.use_threads() ? "true\n" : "false\n")
     @printf("  Use global index with HMatrix: ")
-    @printf("%s", HMatrices.use_global_index() ? "true\n\n" : "false\n\n")
+    @printf("%s", HMatrices.use_global_index() ? "true\n" : "false\n")
+    @printf("  Linear solver: ")
+    @printf("%s\n", solver.l_solver)
+    @printf("  Preconditioner: ")
+    @printf("%s", isa(solver.mat.Pl, Identity) ? "none\n\n" : "ILU\n\n")
 end
 
 " Reinitialize solver after successful solve"

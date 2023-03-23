@@ -64,15 +64,17 @@ export CSVMaximumOutput
 function run!(problem::AbstractDDProblem{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
+    pc::Bool=false, pc_atol::T=1.0e-2,
     nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10,
     l_solver::String="bicgstabl", l_max_it::Int64=1000, l_abs_tol::T=1.0e-10, l_rel_tol::T=1.0e-10,
-    hmat_eta::T=3.0, hmat_atol::T=1.0e-06) where {T<:Real}
+    hmat_eta::T=2.0, hmat_atol::T=1.0e-06) where {T<:Real}
     # Timer
     timer = TimerOutput()
 
     # Initialize solver
     @timeit timer "Initialize Solver" solver = DDSolver(problem;
         hmat_eta=hmat_eta, hmat_atol=hmat_atol,
+        pc, pc_atol,
         nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol,
         l_solver=l_solver, l_max_it=l_max_it, l_abs_tol=l_abs_tol, l_rel_tol=l_rel_tol
     )
@@ -121,15 +123,17 @@ end
 function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
+    pc::Bool=false, pc_atol::T=1.0e-2,
     nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10,
     l_solver::String="bicgstabl", l_max_it::Int64=1000, l_abs_tol::T=1.0e-10, l_rel_tol::T=1.0e-10,
-    hmat_eta::T=3.0, hmat_atol::T=1.0e-06, dt_min::T=1.0e-14) where {T<:Real}
+    hmat_eta::T=2.0, hmat_atol::T=1.0e-06, dt_min::T=1.0e-14) where {T<:Real}
     # Timer
     timer = TimerOutput()
 
     # Initialize solver
     @timeit timer "Initialize Solver" solver = DDSolver(problem;
         hmat_eta=hmat_eta, hmat_atol=hmat_atol,
+        pc, pc_atol,
         nl_max_it=nl_max_it, nl_abs_tol=nl_abs_tol, nl_rel_tol=nl_rel_tol,
         l_solver=l_solver, l_max_it=l_max_it, l_abs_tol=l_abs_tol, l_rel_tol=l_rel_tol
     )

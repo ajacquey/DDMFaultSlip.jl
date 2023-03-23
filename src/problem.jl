@@ -10,8 +10,11 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " The Poisson's ratio"
     ν::Float64
 
-    " A boolean to check if system is initialized"
-    initialized::Bool
+    " The number of elements"
+    n::Int
+
+    " The number of degrees of freedom"
+    n_dof::Int
 
     " A boolean to specify if the problem is transient"
     transient::Bool
@@ -33,7 +36,7 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
 
     " Constructor"
     function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient,
+        return new{T}(mesh, μ, ν, length(mesh.elems), length(mesh.elems), transient,
             Variable(T, :ϵ, length(mesh.elems)),
             AuxVariable(T, :σ, length(mesh.elems)),
             Vector{AbstractConstraint}(undef, 0),
@@ -50,8 +53,11 @@ mutable struct ShearDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     " The elastic shear modulus"
     μ::Float64
 
-    " A boolean to check if system is initialized"
-    initialized::Bool
+    " The number of elements"
+    n::Int
+
+    " The number of degrees of freedom"
+    n_dof::Int
 
     " A boolean to specify if the problem is transient"
     transient::Bool
@@ -67,7 +73,7 @@ mutable struct ShearDDProblem2D{T<:Real} <: AbstractDDProblem{T}
 
     " Constructor"
     function ShearDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, false, transient,
+        return new{T}(mesh, μ, length(mesh.elems), length(mesh.elems), transient,
             Variable(T, :δ, length(mesh.elems)),
             AuxVariable(T, :τ, length(mesh.elems)),
             Vector{AbstractConstraint}(undef, 0),
@@ -85,8 +91,11 @@ mutable struct ShearDDProblem3D{T<:Real} <: AbstractDDProblem{T}
     " The Poisson's ratio"
     ν::Float64
 
-    " A boolean to check if system is initialized"
-    initialized::Bool
+    " The number of elements"
+    n::Int
+
+    " The number of degrees of freedom"
+    n_dof::Int
 
     " A boolean to specify if the problem is transient"
     transient::Bool
@@ -108,7 +117,7 @@ mutable struct ShearDDProblem3D{T<:Real} <: AbstractDDProblem{T}
 
     " Constructor"
     function ShearDDProblem3D(mesh::DDMesh2D{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient,
+        return new{T}(mesh, μ, ν, length(mesh.elems), 2 * length(mesh.elems), transient,
             Variable(T, :δ_x, length(mesh.elems)),
             Variable(T, :δ_y, length(mesh.elems)),
             AuxVariable(T, :τ_x, length(mesh.elems)),
@@ -127,8 +136,11 @@ mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     " The elastic shear modulus"
     μ::Float64
 
-    " A boolean to check if system is initialized"
-    initialized::Bool
+    " The number of elements"
+    n::Int
+
+    " The number of degrees of freedom"
+    n_dof::Int
 
     " A boolean to specify if the problem is transient"
     transient::Bool
@@ -155,7 +167,7 @@ mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
 
     " Constructor"
     function CoupledDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, false, transient,
+        return new{T}(mesh, μ, length(mesh.elems), 2 * length(mesh.elems), transient,
             Variable(T, :ϵ, length(mesh.elems)),
             Variable(T, :δ, length(mesh.elems)),
             AuxVariable(T, :σ, length(mesh.elems)),
@@ -178,8 +190,11 @@ mutable struct CoupledDDProblem3D{T<:Real} <: AbstractDDProblem{T}
     " The Poisson's ratio"
     ν::Float64
 
-    " A boolean to check if system is initialized"
-    initialized::Bool
+    " The number of elements"
+    n::Int
+
+    " The number of degrees of freedom"
+    n_dof::Int
 
     " A boolean to specify if the problem is transient"
     transient::Bool
@@ -209,7 +224,7 @@ mutable struct CoupledDDProblem3D{T<:Real} <: AbstractDDProblem{T}
 
     " Constructor"
     function CoupledDDProblem3D(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, false, transient,
+        return new{T}(mesh, μ, ν, length(mesh.elems), 3 * length(mesh.elems), transient,
             Variable(T, :ϵ, length(mesh.elems)),
             Variable(T, :δ_x, length(mesh.elems)),
             Variable(T, :δ_y, length(mesh.elems)),
@@ -343,7 +358,7 @@ function hasConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
     if hasproperty(problem, :constraints_δ)
         if ~isempty(problem.constraints_δ)
             return true
-        end   
+        end
     end
     if hasproperty(problem, :constraints_δx)
         if ~isempty(problem.constraints_δx)

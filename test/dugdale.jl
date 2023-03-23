@@ -168,8 +168,6 @@ end
         # Dugdale yield
         addCohesiveConstraint!(problem, DugdaleCohesiveZone(1.0, 0.0, 1.0, k))
 
-        # outputs = [VTKDomainOutput(mesh, "outputs/test_dugdale_3D_shear_$(λ)")]
-
         # Run problem
         run!(problem; log=false)
 

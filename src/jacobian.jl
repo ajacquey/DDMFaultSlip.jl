@@ -8,11 +8,14 @@ mutable struct NormalDDJacobian{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Normal collocation matrix"
     En::HMatrix{R,T}
 
+    " Preconditioner"
+    Pl::Union{LU{T,HMatrix{R,T}},Identity}
+
     " Local jacobian"
     jac_loc::Vector{T}
 
     " Constructor"
-    function NormalDDJacobian(problem::NormalDDProblem{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
+    function NormalDDJacobian(problem::NormalDDProblem{T}; eta::T=2.0, atol::T=1.0e-06, pc::Bool=true, pc_atol::T=1.0e-2) where {T<:Real}
         # Create H-matrix
         if isa(problem.mesh, DDMesh1D)
             K = DD2DElasticMatrix(problem.mesh.elems, problem.μ)
@@ -28,8 +31,15 @@ mutable struct NormalDDJacobian{R,T<:Real} <: AbstractDDJacobian{R,T}
         # Assemble H-matrix
         En = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
+        # Preconditioner
+        if (pc)
+            Pl = lu(En ; atol=pc_atol)
+        else
+            Pl = IterativeSolvers.Identity()
+        end
+
         R = typeof(En.coltree)
-        return new{R,T}(En, zeros(T, size(En, 1)))
+        return new{R,T}(En, Pl, zeros(T, size(En, 1)))
     end
 end
 
@@ -45,11 +55,14 @@ mutable struct ShearDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Shear collocation matrices"
     Es::HMatrix{R,T}
 
+    " Preconditioner"
+    Pl::Union{LU{T,HMatrix{R,T}},Identity}
+
     " Local jacobian"
     jac_loc::Vector{T}
 
     " Constructor"
-    function ShearDDJacobian2D(problem::ShearDDProblem2D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
+    function ShearDDJacobian2D(problem::ShearDDProblem2D{T}; eta::T=2.0, atol::T=1.0e-06, pc::Bool=true, pc_atol::T=1.0e-2) where {T<:Real}
         # Create H-matrix xx
         K = DD2DElasticMatrix(problem.mesh.elems, problem.μ)
         # Cluster tree
@@ -61,8 +74,15 @@ mutable struct ShearDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
         # Assemble H-matrix
         Es = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
+        # Preconditioner
+        if (pc)
+            Pl = lu(Es ; atol=pc_atol)
+        else
+            Pl = IterativeSolvers.Identity()
+        end
+
         R = typeof(Es.coltree)
-        return new{R,T}(Es, zeros(T, size(Es, 1)))
+        return new{R,T}(Es, Pl, zeros(T, size(Es, 1)))
     end
 end
 
@@ -76,46 +96,51 @@ end
 
 mutable struct ShearDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Shear collocation matrices"
-    Esxx::HMatrix{R,T}
-    Esyy::HMatrix{R,T}
-    Esxy::HMatrix{R,T}
+    Es::HMatrix{R,T}
+
+    " Preconditioner"
+    Pl::Union{LU{T,HMatrix{R,T}},Identity}
 
     " Local jacobian"
     jac_loc_x::Vector{Vector{T}}
     jac_loc_y::Vector{Vector{T}}
 
     " Constructor"
-    function ShearDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
+    function ShearDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06, pc::Bool=true, pc_atol::T=1.0e-2) where {T<:Real}
         # Create H-matrices
-        Kxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
-        Kyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
-        Kxy = DD3DShearElasticMatrixXY(problem.mesh.elems, problem.μ, problem.ν)
+        K = DD3DShearElasticMatrix(vcat(problem.mesh.elems, problem.mesh.elems), problem.μ, problem.ν)
         # Cluster tree
-        Xclt = Yclt = ClusterTree([Kxx.e[i].X for i in 1:length(Kxx.e)])
+        Xclt = Yclt = ClusterTree([K.e[i].X for i in 1:length(K.e)])
+
         # Admissibility
         adm = StrongAdmissibilityStd(; eta=eta)
         # Compatibility
         comp = PartialACA(; atol=atol)
         # Assemble H-matrices
-        Esxx = assemble_hmat(Kxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        Esyy = assemble_hmat(Kyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        Esxy = assemble_hmat(Kxy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Es = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
         # Local jacobian
         jac_loc_x = Vector{Vector{T}}(undef, 2)
-        jac_loc_x[1] = zeros(T, size(Esxx, 1))
-        jac_loc_x[2] = zeros(T, size(Esxx, 1))
+        jac_loc_x[1] = zeros(T, div(length(K.e), 2))
+        jac_loc_x[2] = zeros(T, div(length(K.e), 2))
         jac_loc_y = Vector{Vector{T}}(undef, 2)
-        jac_loc_y[1] = zeros(T, size(Esxx, 1))
-        jac_loc_y[2] = zeros(T, size(Esxx, 1))
+        jac_loc_y[1] = zeros(T, div(length(K.e), 2))
+        jac_loc_y[2] = zeros(T, div(length(K.e), 2))
 
-        R = typeof(Esxx.coltree)
-        return new{R,T}(Esxx, Esyy, Esxy, jac_loc_x, jac_loc_y)
+        # Preconditioner
+        if (pc)
+            Pl = lu(Es ; atol=pc_atol)
+        else
+            Pl = IterativeSolvers.Identity()
+        end
+
+        R = typeof(Es.coltree)
+        return new{R,T}(Es, Pl, jac_loc_x, jac_loc_y)
     end
 end
 
 function Base.size(J::ShearDDJacobian3D{R,T}) where {R,T<:Real}
-    return size(J.Esxx, 1) + size(J.Esyy, 2), size(J.Esxx, 2) + size(J.Esyy, 2)
+    return size(J.Es, 1), size(J.Es, 2)
 end
 
 function reinitLocalJacobian!(J::ShearDDJacobian3D{R,T}) where {R,T<:Real}
@@ -127,43 +152,50 @@ end
 
 mutable struct ShearNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Shear collocation matrices"
-    Esxx::HMatrix{R,T}
-    Esyy::HMatrix{R,T}
+    Es::HMatrix{R,T}
+
+    " Preconditioner"
+    Pl::Union{LU{T,HMatrix{R,T}},Identity}
 
     " Local jacobian"
     jac_loc_x::Vector{Vector{T}}
     jac_loc_y::Vector{Vector{T}}
 
     " Constructor"
-    function ShearNoNuDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
+    function ShearNoNuDDJacobian3D(problem::ShearDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06, pc::Bool=true, pc_atol::T=1.0e-2) where {T<:Real}
         # Create H-matrices
-        Kxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
-        Kyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
+        K = DD3DShearNoNuElasticMatrix(problem.mesh.elems, problem.μ)
         # Cluster tree
-        Xclt = Yclt = ClusterTree([Kxx.e[i].X for i in 1:length(Kxx.e)])
+        Xclt = Yclt = ClusterTree([K.e[i].X for i in 1:length(K.e)])
         # Admissibility
         adm = StrongAdmissibilityStd(; eta=eta)
         # Compatibility
         comp = PartialACA(; atol=atol)
         # Assemble H-matrices
-        Esxx = assemble_hmat(Kxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        Esyy = assemble_hmat(Kyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        Es = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
         # Local jacobian
         jac_loc_x = Vector{Vector{T}}(undef, 2)
-        jac_loc_x[1] = zeros(T, size(Esxx, 1))
-        jac_loc_x[2] = zeros(T, size(Esxx, 1))
+        jac_loc_x[1] = zeros(T, size(Es, 1))
+        jac_loc_x[2] = zeros(T, size(Es, 1))
         jac_loc_y = Vector{Vector{T}}(undef, 2)
-        jac_loc_y[1] = zeros(T, size(Esxx, 1))
-        jac_loc_y[2] = zeros(T, size(Esxx, 1))
+        jac_loc_y[1] = zeros(T, size(Es, 1))
+        jac_loc_y[2] = zeros(T, size(Es, 1))
 
-        R = typeof(Esxx.coltree)
-        return new{R,T}(Esxx, Esyy, jac_loc_x, jac_loc_y)
+        # Preconditioner
+        if (pc)
+            Pl = lu(Es ; atol=pc_atol)
+        else
+            Pl = IterativeSolvers.Identity()
+        end
+
+        R = typeof(Es.coltree)
+        return new{R,T}(Es, Pl, jac_loc_x, jac_loc_y)
     end
 end
 
 function Base.size(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
-    return size(J.Esxx, 1) + size(J.Esyy, 2), size(J.Esxx, 2) + size(J.Esyy, 2)
+    return 2 * size(J.Es, 1), 2 * size(J.Es, 2)
 end
 
 function reinitLocalJacobian!(J::ShearNoNuDDJacobian3D{R,T}) where {R,T<:Real}
@@ -177,12 +209,15 @@ mutable struct CoupledDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Collocation matrices"
     E::HMatrix{R,T}
 
+    " Preconditioner"
+    Pl::Union{LU{T,HMatrix{R,T}},Identity}
+
     " Local jacobian"
     jac_loc_ϵ::Vector{Vector{T}}
     jac_loc_δ::Vector{Vector{T}}
 
     " Constructor"
-    function CoupledDDJacobian2D(problem::CoupledDDProblem2D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
+    function CoupledDDJacobian2D(problem::CoupledDDProblem2D{T}; eta::T=2.0, atol::T=1.0e-06, pc::Bool=true, pc_atol::T=1.0e-2) where {T<:Real}
         # Create H-matrix xx
         K = DD2DElasticMatrix(problem.mesh.elems, problem.μ)
         # Cluster tree
@@ -202,8 +237,15 @@ mutable struct CoupledDDJacobian2D{R,T<:Real} <: AbstractDDJacobian{R,T}
         jac_loc_δ[1] = zeros(T, size(E, 1))
         jac_loc_δ[2] = zeros(T, size(E, 1))
 
+        # Preconditioner
+        if (pc)
+            Pl = lu(E ; atol=pc_atol)
+        else
+            Pl = IterativeSolvers.Identity()
+        end
+
         R = typeof(E.coltree)
-        return new{R,T}(E, jac_loc_ϵ, jac_loc_δ)
+        return new{R,T}(E, Pl, jac_loc_ϵ, jac_loc_δ)
     end
 end
 
@@ -220,7 +262,7 @@ end
 
 mutable struct CoupledDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Normal collocation matrix"
-    En::HMatrix{R,T}
+    E::HMatrix{R,T}
     " Shear collocation matrices"
     Esxx::HMatrix{R,T}
     Esyy::HMatrix{R,T}
@@ -286,11 +328,8 @@ function reinitLocalJacobian!(J::CoupledDDJacobian3D{R,T}) where {R,T<:Real}
 end
 
 mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
-    " Normal collocation matrix"
-    En::HMatrix{R,T}
-    " Shear collocation matrices"
-    Esxx::HMatrix{R,T}
-    Esyy::HMatrix{R,T}
+    " Elastic collocation matrix"
+    E::HMatrix{R,T}
 
     " Local jacobian"
     jac_loc_ϵ::Vector{Vector{T}}
@@ -298,11 +337,9 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     jac_loc_δy::Vector{Vector{T}}
 
     " Constructor"
-    function CoupledNoNuDDJacobian3D(problem::CoupledDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06) where {T<:Real}
+    function CoupledNoNuDDJacobian3D(problem::CoupledDDProblem3D{T}; eta::T=2.0, atol::T=1.0e-06, pc::Bool=true, pc_atol::T=1.0e-2) where {T<:Real}
         # Create H-matrix
-        Kn = DD3DNormalElasticMatrix(problem.mesh.elems, problem.μ, problem.ν)
-        Ksxx = DD3DShearElasticMatrixXX(problem.mesh.elems, problem.μ, problem.ν)
-        Ksyy = DD3DShearElasticMatrixYY(problem.mesh.elems, problem.μ, problem.ν)
+        K = DD3DElasticMatrix(problem.mesh.elems, problem.μ)
         # Cluster tree
         Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(Kn.e)])
         # Admissibility
@@ -310,9 +347,7 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         # Compatibility
         comp = PartialACA(; atol=atol)
         # Assemble H-matrix
-        En = assemble_hmat(Kn, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        Esxx = assemble_hmat(Ksxx, Xclt, Yclt; adm, comp, threads=true, distributed=false)
-        Esyy = assemble_hmat(Ksyy, Xclt, Yclt; adm, comp, threads=true, distributed=false)
+        E = assemble_hmat(K, Xclt, Yclt; adm, comp, threads=true, distributed=false)
 
         # Local jacobian
         jac_loc_ϵ = Vector{Vector{T}}(undef, 3)
@@ -328,13 +363,20 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         jac_loc_δy[2] = zeros(T, size(En, 1))
         jac_loc_δy[3] = zeros(T, size(En, 1))
 
+        # Preconditioner
+        if (pc)
+            Pl = lu(E ; atol=pc_atol)
+        else
+            Pl = IterativeSolvers.Identity()
+        end
+
         R = typeof(En.coltree)
-        return new{R,T}(En, Esxx, Esyy, jac_loc_ϵ, jac_loc_δx, jac_loc_δy)
+        return new{R,T}(E, Pl, Esxx, Esyy, jac_loc_ϵ, jac_loc_δx, jac_loc_δy)
     end
 end
 
 function Base.size(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
-    return size(J.En, 1) + size(J.Esxx, 1) + size(J.Esyy, 1), size(J.En, 1) + size(J.Esxx, 1) + size(J.Esyy, 1)
+    return 3 * size(J.E, 1), 3 * size(J.E, 1)
 end
 
 function reinitLocalJacobian!(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
@@ -412,14 +454,15 @@ function LinearAlgebra.mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::
 
     # Hmatrix multiplication
     collocation_mul!(y, J, x, a, b; global_index=global_index, threads=threads)
+    # mul!(y, J.Es, x, a, b; global_index=global_index, threads=threads)
 
     # Add local jacobian contributions
-    n = div(length(x), 2)
+    n = div(size(J, 1), 2)
     y .+= vcat(J.jac_loc_x[1], J.jac_loc_y[2]) .* x
     y[1:n] .+= J.jac_loc_x[2] .* x[(n+1):(2*n)]
     y[(n+1):(2*n)] .+= J.jac_loc_y[1] .* x[1:n]
 
-    return y
+    # return y
 end
 
 " mul! function for CoupledDDJacobian2D"
@@ -454,7 +497,8 @@ function LinearAlgebra.mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T
 
     return y
 end
-" mul! function for CoupledNoNuDDJacobian2D"
+
+" mul! function for CoupledNoNuDDJacobian3D"
 function LinearAlgebra.mul!(y::AbstractVector{T}, J::CoupledDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
 
@@ -489,15 +533,17 @@ end
 function collocation_mul!(y::AbstractVector{T}, J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     # Size of HMatrix
-    n = size(J.Esxx, 1)
+    # n = size(J.Esxx, 1)
 
-    # Slip δ_x multiplication
-    mul!(view(y, 1:n), J.Esxx, view(x, 1:n), a, b; global_index=global_index, threads=threads)
-    mul!(view(y, 1:n), J.Esxy, view(x, n+1:2*n), a, 1; global_index=global_index, threads=threads)
-    # Slip δ_y multiplication
-    mul!(view(y, n+1:2*n), J.Esyy, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
-    mul!(view(y, n+1:2*n), J.Esxy, view(x, 1:n), a, 1; global_index=global_index, threads=threads)
+    # # Slip δ_x multiplication
+    # mul!(view(y, 1:n), J.Esxx, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    # mul!(view(y, 1:n), J.Esxy, view(x, n+1:2*n), a, 1; global_index=global_index, threads=threads)
+    # # Slip δ_y multiplication
+    # mul!(view(y, n+1:2*n), J.Esyy, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
+    # mul!(view(y, n+1:2*n), J.Esxy, view(x, 1:n), a, 1; global_index=global_index, threads=threads)
 
+    # Slip δ multiplication
+    mul!(y, J.Es, x, a, b; global_index=global_index, threads=threads)
     return y
 end
 
@@ -505,12 +551,12 @@ end
 function collocation_mul!(y::AbstractVector{T}, J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     # Size of HMatrix
-    n = size(J.Esxx, 1)
+    n = size(J.Es, 1)
 
     # Slip δ_x multiplication
-    mul!(view(y, 1:n), J.Esxx, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, 1:n), J.Es, view(x, 1:n), a, b; global_index=global_index, threads=threads)
     # Slip δ_y multiplication
-    mul!(view(y, n+1:2*n), J.Esyy, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, n+1:2*n), J.Es, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
 
     return y
 end
@@ -554,11 +600,11 @@ function collocation_mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T},
     n = size(J.En, 1)
 
     # Opening ϵ multiplication
-    mul!(view(y, 1:n), J.En, view(x, 1:n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, 1:n), J.E, view(x, 1:n), a, b; global_index=global_index, threads=threads)
     # Slip δ_x multiplication
-    mul!(view(y, n+1:2*n), J.Esxx, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, n+1:2*n), J.E, view(x, n+1:2*n), a, b; global_index=global_index, threads=threads)
     # Slip δ_y multiplication
-    mul!(view(y, 2*n+1:3*n), J.Esyy, view(x, 2*n+1:3*n), a, b; global_index=global_index, threads=threads)
+    mul!(view(y, 2*n+1:3*n), J.E, view(x, 2*n+1:3*n), a, b; global_index=global_index, threads=threads)
 
     return y
 end
@@ -567,20 +613,25 @@ end
 function collocation_mul(J::ShearDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer;
     global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     # Size of HMatrix
-    n = size(J.Esxx, 1)
+    # n = size(J.Esxx, 1)
+    n = div(size(J.Es, 1), 2)
     # Declare results
-    y = zeros(T, n)
+    # y = zeros(T, n)
+    y = zeros(size(x))
+    mul!(y, J.Es, x, 1, 0; global_index=global_index, threads=threads)
 
     if (d == 1)
         # Slip δ_x multiplication
-        mul!(y, J.Esxx, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
-        mul!(y, J.Esxy, view(x, n+1:2*n), 1, 1; global_index=global_index, threads=threads)
-        return y
+        # mul!(y, J.Esxx, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        # mul!(y, J.Esxy, view(x, n+1:2*n), 1, 1; global_index=global_index, threads=threads)
+        # return y
+        return y[1:n]
     elseif (d == 2)
         # Slip δ_y multiplication
-        mul!(y, J.Esyy, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
-        mul!(y, J.Esxy, view(x, 1:n), 1, 1; global_index=global_index, threads=threads)
-        return y
+        # mul!(y, J.Esyy, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        # mul!(y, J.Esxy, view(x, 1:n), 1, 1; global_index=global_index, threads=threads)
+        # return y
+        return y[n+1:2*n]
     else
         throw(ErrorException("Wrong dimension!"))
     end
@@ -590,17 +641,17 @@ end
 function collocation_mul(J::ShearNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, d::Integer;
     global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     # Size of HMatrix
-    n = size(J.Esxx, 1)
+    n = size(J.Es, 1)
     # Declare results
     y = zeros(T, n)
 
     if (d == 1)
         # Slip δ_x multiplication
-        mul!(y, J.Esxx, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.Es, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
         return y
     elseif (d == 2)
         # Slip δ_y multiplication
-        mul!(y, J.Esyy, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.Es, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
         return y
     else
         throw(ErrorException("Wrong dimension!"))
@@ -638,15 +689,15 @@ function collocation_mul(J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, 
 
     if (d == 0)
         # Opening ϵ multiplication
-        mul!(y, J.En, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.E, view(x, 1:n), 1, 0; global_index=global_index, threads=threads)
         return y
     elseif (d == 1)
         # Slip δ_x multiplication
-        mul!(y, J.Esxx, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.E, view(x, n+1:2*n), 1, 0; global_index=global_index, threads=threads)
         return y
     elseif (d == 2)
         # Slip δ_y multiplication
-        mul!(y, J.Esyy, view(x, 2*n+1:3*n), 1, 0; global_index=global_index, threads=threads)
+        mul!(y, J.E, view(x, 2*n+1:3*n), 1, 0; global_index=global_index, threads=threads)
         return y
     else
         throw(ErrorException("Wrong dimension!"))
