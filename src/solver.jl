@@ -131,7 +131,7 @@ mutable struct DDSolver{R,T<:Real}
         # Check if linear solver is provided
         checkLinearSolver(l_solver)
 
-        R = typeof(mat.Esxx.coltree)
+        R = typeof(mat.E.coltree)
         return new{R,T}(mat, zeros(T, n_dof), zeros(T, n_dof),
             nl_max_it, nl_abs_tol, nl_rel_tol,
             l_solver, l_max_it, l_abs_tol, l_rel_tol)

@@ -331,6 +331,9 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
     " Elastic collocation matrix"
     E::HMatrix{R,T}
 
+    " Preconditioner"
+    Pl::Union{LU{T,HMatrix{R,T}},Identity}
+
     " Local jacobian"
     jac_loc_ϵ::Vector{Vector{T}}
     jac_loc_δx::Vector{Vector{T}}
@@ -341,7 +344,7 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
         # Create H-matrix
         K = DD3DElasticMatrix(problem.mesh.elems, problem.μ)
         # Cluster tree
-        Xclt = Yclt = ClusterTree([Kn.e[i].X for i in 1:length(Kn.e)])
+        Xclt = Yclt = ClusterTree([K.e[i].X for i in 1:length(K.e)])
         # Admissibility
         adm = StrongAdmissibilityStd(; eta=eta)
         # Compatibility
@@ -351,17 +354,17 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
 
         # Local jacobian
         jac_loc_ϵ = Vector{Vector{T}}(undef, 3)
-        jac_loc_ϵ[1] = zeros(T, size(En, 1))
-        jac_loc_ϵ[2] = zeros(T, size(En, 1))
-        jac_loc_ϵ[3] = zeros(T, size(En, 1))
+        jac_loc_ϵ[1] = zeros(T, size(E, 1))
+        jac_loc_ϵ[2] = zeros(T, size(E, 1))
+        jac_loc_ϵ[3] = zeros(T, size(E, 1))
         jac_loc_δx = Vector{Vector{T}}(undef, 3)
-        jac_loc_δx[1] = zeros(T, size(En, 1))
-        jac_loc_δx[2] = zeros(T, size(En, 1))
-        jac_loc_δx[3] = zeros(T, size(En, 1))
+        jac_loc_δx[1] = zeros(T, size(E, 1))
+        jac_loc_δx[2] = zeros(T, size(E, 1))
+        jac_loc_δx[3] = zeros(T, size(E, 1))
         jac_loc_δy = Vector{Vector{T}}(undef, 3)
-        jac_loc_δy[1] = zeros(T, size(En, 1))
-        jac_loc_δy[2] = zeros(T, size(En, 1))
-        jac_loc_δy[3] = zeros(T, size(En, 1))
+        jac_loc_δy[1] = zeros(T, size(E, 1))
+        jac_loc_δy[2] = zeros(T, size(E, 1))
+        jac_loc_δy[3] = zeros(T, size(E, 1))
 
         # Preconditioner
         if (pc)
@@ -370,13 +373,13 @@ mutable struct CoupledNoNuDDJacobian3D{R,T<:Real} <: AbstractDDJacobian{R,T}
             Pl = IterativeSolvers.Identity()
         end
 
-        R = typeof(En.coltree)
-        return new{R,T}(E, Pl, Esxx, Esyy, jac_loc_ϵ, jac_loc_δx, jac_loc_δy)
+        R = typeof(E.coltree)
+        return new{R,T}(E, Pl, jac_loc_ϵ, jac_loc_δx, jac_loc_δy)
     end
 end
 
 function Base.size(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
-    return 3 * size(J.E, 1), 3 * size(J.E, 1)
+    return 3 * size(J.E, 1), 3 * size(J.E, 2)
 end
 
 function reinitLocalJacobian!(J::CoupledNoNuDDJacobian3D{R,T}) where {R,T<:Real}
@@ -597,7 +600,7 @@ end
 function collocation_mul!(y::AbstractVector{T}, J::CoupledNoNuDDJacobian3D{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0;
     global_index=HMatrices.use_global_index(), threads=false) where {R,T<:Real}
     # Size of HMatrix
-    n = size(J.En, 1)
+    n = size(J.E, 1)
 
     # Opening ϵ multiplication
     mul!(view(y, 1:n), J.E, view(x, 1:n), a, b; global_index=global_index, threads=threads)
