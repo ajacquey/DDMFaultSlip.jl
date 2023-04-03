@@ -37,7 +37,7 @@ include("injection_utils.jl")
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(τ_inj))
 
         # Run problem
@@ -77,7 +77,7 @@ include("injection_utils.jl")
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(τ_inj))
 
         # Run problem
@@ -117,7 +117,7 @@ include("injection_utils.jl")
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(τ_inj))
 
         # Run problem

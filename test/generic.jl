@@ -8,7 +8,7 @@ function σ_cst(X, time::T) where {T<:Real}
     return 1.5 * (2.0 * X[1]^2 - 1)
 end
 
-function ϵ_analytical(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
+function w_analytical(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
     x = [mesh.elems[i].X[1] for i in 1:length(mesh.elems)]
 
     return (1.0 .- x .^ 2) .^ 1.5
@@ -33,12 +33,10 @@ end
         run!(problem; log=false)
 
         # Analytical solution
-        ϵ_sol = ϵ_analytical(mesh, μ)
+        w_sol = w_analytical(mesh, μ)
+
         # Error
-        # err = mean(abs.(problem.ϵ.value - ϵ_sol) ./ ϵ_sol)
-        # Error less than 2%
-        # @test err < 0.02
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=2.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=2.0e-02)
     end
 end
 

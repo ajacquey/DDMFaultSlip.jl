@@ -4,21 +4,21 @@ using DDMFaultSlip
 using StaticArrays
 using Test
 
-function σ_cst(X, time::T) where {T<:Real}
+function σ_cst(X, Δu::T) where {T<:Real}
     return -1.0
 end
 
-function τ_cst(X, time::T) where {T<:Real}
+function τ_cst(X, Δu::T) where {T<:Real}
     return -1.0
 end
 
-function ϵ_analytical_2D(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
+function w_analytical_2D(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
     x = [mesh.elems[i].X[1] for i in 1:length(mesh.elems)]
 
     return sqrt.(1.0 .- x .^ 2) / μ
 end
 
-function ϵ_analytical_3D(mesh::DDMesh2D{T}, μ::T, ν::T)::Vector{T} where {T<:Real}
+function w_analytical_3D(mesh::DDMesh2D{T}, μ::T, ν::T)::Vector{T} where {T<:Real}
     r = [sqrt(mesh.elems[i].X[1]^2 + mesh.elems[i].X[2]^2) for i in 1:length(mesh.elems)]
 
     return 4 * (1 - ν) / (π * μ) * sqrt.(1 .- r .^ 2)
@@ -48,19 +48,19 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
-        addConstraint!(problem, :ϵ, FunctionConstraint(σ_cst))
-        addConstraint!(problem, :δ, FunctionConstraint(τ_cst))
+        problem = CoupledDDProblem(mesh; μ=μ)
+        addConstraint!(problem, FunctionConstraint(σ_cst), :w)
+        addConstraint!(problem, FunctionConstraint(τ_cst), :δ)
 
         # Run problem
-        run!(problem; log=false)
+        run!(problem; log=true)
 
         # Analytical solutions
-        ϵ_sol = ϵ_analytical_2D(mesh, μ)
+        w_sol = w_analytical_2D(mesh, μ)
         δ_sol = δ_analytical_2D(mesh, μ)
 
         # Error less than 2%
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=2.0e-02) && isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=2.0e-02) && isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
     @testset "Fake coupling 3D - x" begin
         # Create mesh
@@ -71,19 +71,21 @@ end
         ν = 0.0
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
-        addConstraint!(problem, :ϵ, FunctionConstraint(σ_cst))
-        addConstraint!(problem, :δ_x, FunctionConstraint(τ_cst))
+        problem = CoupledDDProblem(mesh; μ=μ, ν=ν)
+        addConstraint!(problem, FunctionConstraint(σ_cst), :w)
+        addConstraint!(problem, FunctionConstraint(τ_cst), :δx)
+
+        outputs = [VTKDomainOutput(mesh, "outputs/test_coupled_x")]
 
         # Run problem
-        run!(problem; log=false)
+        run!(problem; outputs=outputs, log=true, pc=false)
 
         # Analytical solutions
-        ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
+        w_sol = w_analytical_3D(mesh, μ, ν)
         δ_sol = δ_analytical_3D(mesh, μ, ν)
 
         # Error less than 4%
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02) && isapprox(problem.δ_x.value, δ_sol; rtol=4.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=4.0e-02) && isapprox(problem.δ.value[1:problem.n], δ_sol; rtol=4.0e-02)
     end
     @testset "Fake coupling 3D - y" begin
         # Create mesh
@@ -94,19 +96,21 @@ end
         ν = 0.0
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
-        addConstraint!(problem, :ϵ, FunctionConstraint(σ_cst))
-        addConstraint!(problem, :δ_y, FunctionConstraint(τ_cst))
+        problem = CoupledDDProblem(mesh; μ=μ, ν=ν)
+        addConstraint!(problem, FunctionConstraint(σ_cst), :w)
+        addConstraint!(problem, FunctionConstraint(τ_cst), :δy)
+
+        outputs = [VTKDomainOutput(mesh, "outputs/test_coupled_y")]
 
         # Run problem
-        run!(problem; log=false)
+        run!(problem; outputs=outputs, log=true, pc=false)
 
         # Analytical solutions
-        ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
+        w_sol = w_analytical_3D(mesh, μ, ν)
         δ_sol = δ_analytical_3D(mesh, μ, ν)
 
         # Error less than 4%
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02) && isapprox(problem.δ_y.value, δ_sol; rtol=4.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=4.0e-02) && isapprox(problem.δ.value[problem.n+1:2*problem.n], δ_sol; rtol=4.0e-02)
     end
 end
 

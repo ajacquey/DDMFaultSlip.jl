@@ -1,6 +1,17 @@
-abstract type AbstractFluidCoupling{T<:Real} end
+abstract type AbstractFluidCoupling end
 
-mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling{T}
+struct DefaultFluidCoupling <: AbstractFluidCoupling
+    " Constructor"
+    function DefaultFluidCoupling()
+        return new()
+    end
+end
+
+function updatePressure!(fc::DefaultFluidCoupling, X, time::T) where {T<:Real}
+    return nothing
+end
+
+mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling
     " Pressure value"
     p::Vector{T}
 

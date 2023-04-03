@@ -79,13 +79,13 @@ function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time:
             vtk["epsilon_dot", VTKCellData()] = zeros(T, length(problem.ϵ.value))
         end
     end
-    if hasShearDD3D(problem)
-        vtk["delta", VTKCellData()] = cat(problem.δ_x.value, problem.δ_y.value; dims=2)'
-        vtk["tau", VTKCellData()] = cat(problem.τ_x.value, problem.τ_y.value; dims=2)'
+    if hasShearDD(problem)
+        vtk["delta", VTKCellData()] = reshape(problem.δ.value, (problem.n, 2))'
+        vtk["tau", VTKCellData()] = reshape(problem.τ.value, (problem.n, 2))'
         if (dt != 0.0)
-            vtk["delta_dot", VTKCellData()] = cat((problem.δ_x.value - problem.δ_x.value_old) / dt, (problem.δ_y.value - problem.δ_y.value_old) / dt; dims=2)'
+            vtk["delta_dot", VTKCellData()] = reshape((problem.δ.value - problem.δ.value_old) / dt, (problem.n, 2))'
         else
-            vtk["delta_dot", VTKCellData()] = zeros(T, 2, length(problem.δ_x.value))
+            vtk["delta_dot", VTKCellData()] = zeros(T, 2, problem.n)
         end
     end
     if hasFluidCoupling(problem)

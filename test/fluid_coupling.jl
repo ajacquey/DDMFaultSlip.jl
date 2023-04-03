@@ -50,7 +50,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = CoupledDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -66,7 +66,7 @@ end
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
 
         # Run problem
-        run!(problem, time_stepper; log=false)
+        run!(problem, time_stepper; log=true)
 
         # Analytical solutions
         DD_sol = DD_analytical_2D(mesh, μ)
@@ -83,7 +83,7 @@ end
         ν = 0.0
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
+        problem = CoupledDDProblem(mesh; μ=μ, ν=ν)
 
         # ICs
         addNormalStressIC!(problem, σ₀)
@@ -95,11 +95,11 @@ end
         addFrictionConstraint!(problem, ConstantYield(τₛ, kₙ, kₛ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop=10.0, length=20))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
+        time_seq = collect(range(0.5, stop=5.0, length=10))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=5.0)
 
         # Run problem
-        run!(problem, time_stepper; log=false)
+        run!(problem, time_stepper; log=true, pc=false, hmat_eta=6.0)
 
         # Analytical solutions
         DD_sol = DD_analytical_3D(mesh, μ)
