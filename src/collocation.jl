@@ -156,6 +156,28 @@ function Base.size(K::DD3DShearElasticMatrix)
 end
 
 """
+Piecewise constant (PWC) three-dimensional shear axis symmetric elastic kernel matrix
+"""
+struct DD3DShearAxisSymmetricElasticMatrix{T<:Real} <: ElasticKernelMatrix{T}
+    e::Vector{DDTriangleElem{T}}
+    μ::T
+    n::Int
+
+    # Constructor
+    function DD3DShearAxisSymmetricElasticMatrix(mesh::DDMesh2D{T}, μ::T) where {T<:Real}
+        return new{T}(mesh.elems, μ, length(mesh.elems))
+    end
+end
+
+function Base.getindex(K::DD3DShearAxisSymmetricElasticMatrix, i::Int, j::Int)
+    return K.μ / (4 * π) * integralI003(K.e[i], K.e[j])
+end
+
+function Base.size(K::DD3DShearAxisSymmetricElasticMatrix)
+    return K.n, K.n
+end
+
+"""
 Piecewise constant (PWC) two-dimensional coupled elastic kernel matrix
 """
 struct DD2DCoupledElasticMatrix{T<:Real} <: ElasticKernelMatrix{T}

@@ -12,7 +12,7 @@ mutable struct DDSolver{R,T<:Real}
     K::ElasticKernelMatrix{T}
 
     " The H-matrix compressor"
-    comp::Union{ACA,PartialACA}
+    comp::PartialACA
 
     " The H-matrix admissibility"
     adm::StrongAdmissibilityStd
@@ -120,7 +120,7 @@ mutable struct DDSolver{R,T<:Real}
         l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
 
         # Local jacobian
-        if isa(problem.mesh, DDMesh1D)
+        if (isa(problem.mesh, DDMesh1D) || (isa(problem.mesh, DDMesh2D) && (problem.ν == 0.0)))
             mat_loc = Matrix{SparseVector{T,Int}}(undef, 1, 1)
         else
             mat_loc = Matrix{SparseVector{T,Int}}(undef, 2, 2)
@@ -135,18 +135,19 @@ mutable struct DDSolver{R,T<:Real}
             # Cluster tree
             Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         else
-            K = DD3DShearElasticMatrix(problem.mesh, problem.μ, problem.ν)
-            # Cluster tree
-            Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 2))
+            if (problem.ν == 0.0)
+                K = DD3DShearAxisSymmetricElasticMatrix(problem.mesh, problem.μ)
+                Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
+            else
+                K = DD3DShearElasticMatrix(problem.mesh, problem.μ, problem.ν)
+                # Cluster tree
+                Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 2))
+            end
         end
         # Admissibility
         adm = StrongAdmissibilityStd(; eta=hmat_eta)
         # Compatibility
-        if isa(problem.mesh, DDMesh2D) && (problem.ν == 0.0)
-            comp = ACA(; atol=hmat_atol)
-        else
-            comp = PartialACA(; atol=hmat_atol)
-        end
+        comp = PartialACA(; atol=hmat_atol)
         # Assemble H-matrix
         E = assemble_hmat(K, Xclt, Xclt; adm, comp, threads=true, distributed=false)
         mat = E
@@ -168,67 +169,67 @@ mutable struct DDSolver{R,T<:Real}
             l_solver, l_max_it, l_abs_tol, l_rel_tol)
     end
 
-    " Constructor for CoupledDDProblem"
-    function DDSolver(problem::CoupledDDProblem{T}; 
-        hmat_eta::T=3.0, hmat_atol::T=1.0e-08,
-        pc::Bool=true, pc_atol::T=1.0e-2,
-        nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
-        l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
+    # " Constructor for CoupledDDProblem"
+    # function DDSolver(problem::CoupledDDProblem{T}; 
+    #     hmat_eta::T=3.0, hmat_atol::T=1.0e-08,
+    #     pc::Bool=true, pc_atol::T=1.0e-2,
+    #     nl_abs_tol::T, nl_rel_tol::T, nl_max_it::Int,
+    #     l_solver::String, l_max_it::Int, l_abs_tol::T, l_rel_tol::T) where {T<:Real}
         
-        # Local jacobian
-        if isa(problem.mesh, DDMesh1D)
-            mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 2, 2)
-        else
-            mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 3, 3)
-        end
-        for i in eachindex(mat_loc)
-            mat_loc[i] = spzeros(problem.n)
-        end
+    #     # Local jacobian
+    #     if isa(problem.mesh, DDMesh1D)
+    #         mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 2, 2)
+    #     else
+    #         mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 3, 3)
+    #     end
+    #     for i in eachindex(mat_loc)
+    #         mat_loc[i] = spzeros(problem.n)
+    #     end
 
-        # Assemble collocation matrix
-        if isa(problem.mesh, DDMesh1D)
-            K = DD2DCoupledElasticMatrix(problem.mesh, problem.μ)
-            mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 2, 2)
-            for i in eachindex(mat_loc)
-                mat_loc[i] = spzeros(problem.n)
-            end
-            Kj = DD2DCoupledJacobianMatrix(problem.mesh, mat_loc, problem.μ)
-            # Cluster tree
-            Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 2))
-        else
-            K = DD3DCoupledElasticMatrix(problem.mesh, problem.μ, problem.ν)
-            mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 3, 3)
-            for i in eachindex(mat_loc)
-                mat_loc[i] = spzeros(problem.n)
-            end
-            Kj = DD3DCoupledJacobianMatrix(problem.mesh, mat_loc, problem.μ, problem.ν)
-            # Cluster tree
-            Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 3))
-        end
-        # Admissibility
-        adm = StrongAdmissibilityStd(; eta=hmat_eta)
-        # Compatibility
-        comp = PartialACA(; atol=hmat_atol)
-        # Assemble H-matrix
-        E = assemble_hmat(K, Xclt, Xclt; adm, comp, threads=true, distributed=false)
-        mat = assemble_hmat(Kj, Xclt, Xclt; adm, comp, threads=true, distributed=false)
+    #     # Assemble collocation matrix
+    #     if isa(problem.mesh, DDMesh1D)
+    #         K = DD2DCoupledElasticMatrix(problem.mesh, problem.μ)
+    #         mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 2, 2)
+    #         for i in eachindex(mat_loc)
+    #             mat_loc[i] = spzeros(problem.n)
+    #         end
+    #         Kj = DD2DCoupledJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+    #         # Cluster tree
+    #         Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 2))
+    #     else
+    #         K = DD3DCoupledElasticMatrix(problem.mesh, problem.μ, problem.ν)
+    #         mat_loc = Matrix{SparseVector{Float64,Int64}}(undef, 3, 3)
+    #         for i in eachindex(mat_loc)
+    #             mat_loc[i] = spzeros(problem.n)
+    #         end
+    #         Kj = DD3DCoupledJacobianMatrix(problem.mesh, mat_loc, problem.μ, problem.ν)
+    #         # Cluster tree
+    #         Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 3))
+    #     end
+    #     # Admissibility
+    #     adm = StrongAdmissibilityStd(; eta=hmat_eta)
+    #     # Compatibility
+    #     comp = PartialACA(; atol=hmat_atol)
+    #     # Assemble H-matrix
+    #     E = assemble_hmat(K, Xclt, Xclt; adm, comp, threads=true, distributed=false)
+    #     mat = assemble_hmat(Kj, Xclt, Xclt; adm, comp, threads=true, distributed=false)
 
-        # Preconditioner
-        Pc = IterativeSolvers.Identity()
+    #     # Preconditioner
+    #     Pc = IterativeSolvers.Identity()
         
-        # Degrees of freedom
-        n_dof = size(E, 1)
+    #     # Degrees of freedom
+    #     n_dof = size(E, 1)
 
-        # Check if linear solver is provided
-        checkLinearSolver(l_solver)
+    #     # Check if linear solver is provided
+    #     checkLinearSolver(l_solver)
 
-        R = typeof(E.coltree)
-        return new{R,T}(mat, mat_loc, E, Kj, comp, adm, Xclt, 
-            Pc, zeros(T, n_dof), zeros(T, n_dof),
-            pc, pc_atol,
-            nl_max_it, nl_abs_tol, nl_rel_tol,
-            l_solver, l_max_it, l_abs_tol, l_rel_tol)
-    end
+    #     R = typeof(E.coltree)
+    #     return new{R,T}(mat, mat_loc, E, Kj, comp, adm, Xclt, 
+    #         Pc, zeros(T, n_dof), zeros(T, n_dof),
+    #         pc, pc_atol,
+    #         nl_max_it, nl_abs_tol, nl_rel_tol,
+    #         l_solver, l_max_it, l_abs_tol, l_rel_tol)
+    # end
 
     # " Constructor for ShearDDProblem2D"
     # function DDSolver(problem::ShearDDProblem2D{T};

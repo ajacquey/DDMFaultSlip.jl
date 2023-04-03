@@ -70,23 +70,27 @@ end
 
 function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time::T, dt::T, time_step::Int) where {T<:Real}
     vtk = vtk_grid(string(out.filename_base, "_", string(time_step)), out.vtk_points, out.vtk_cells; append=true, ascii=false, compress=true)
-    if hasNormalDD(problem)
-        vtk["epsilon", VTKCellData()] = problem.ϵ.value
-        vtk["sigma", VTKCellData()] = problem.σ.value
+    if hasproperty(problem, :w)
+        vtk["w", VTKCellData()] = problem.w.value
         if (dt != 0.0)
-            vtk["epsilon_dot", VTKCellData()] = (problem.ϵ.value - problem.ϵ.value_old) / dt
+            vtk["w_dot", VTKCellData()] = (problem.w.value - problem.w.value_old) / dt
         else
-            vtk["epsilon_dot", VTKCellData()] = zeros(T, length(problem.ϵ.value))
+            vtk["w_dot", VTKCellData()] = zeros(T, length(problem.w.value))
         end
     end
-    if hasShearDD(problem)
+    if hasproperty(problem, :σ)
+        vtk["sigma", VTKCellData()] = problem.σ.value
+    end
+    if hasproperty(problem, :δ)
         vtk["delta", VTKCellData()] = reshape(problem.δ.value, (problem.n, 2))'
-        vtk["tau", VTKCellData()] = reshape(problem.τ.value, (problem.n, 2))'
         if (dt != 0.0)
             vtk["delta_dot", VTKCellData()] = reshape((problem.δ.value - problem.δ.value_old) / dt, (problem.n, 2))'
         else
             vtk["delta_dot", VTKCellData()] = zeros(T, 2, problem.n)
         end
+    end
+    if hasproperty(problem, :τ)
+        vtk["tau", VTKCellData()] = reshape(problem.τ.value, (problem.n, 2))'
     end
     if hasFluidCoupling(problem)
         vtk["p", VTKCellData()] = problem.fluid_coupling[1].p
@@ -162,29 +166,33 @@ struct CSVDomainOutput{T<:Real} <: AbstractOutput
 end
 
 function addDataToCSV!(data::Matrix{T}, header::String, problem::AbstractDDProblem{T}, dt::T) where {T<:Real}
-    if hasNormalDD(problem)
-        data = hcat(data, problem.ϵ.value)
-        header = string(header, ",epsilon")
+    if hasproperty(problem, :w)
+        data = hcat(data, problem.w.value)
+        header = string(header, ",w")
+        if (dt != 0.0)
+            data = hcat(data, (problem.w.value - problem.w.value_old) / dt)
+        else
+            data = hcat(data, zeros(T, length(problem.w.value)))
+        end
+        header = string(header, ",w_dot")
+    end
+    if hasproperty(problem, :σ)
         data = hcat(data, problem.σ.value)
         header = string(header, ",sigma")
-        if (dt != 0.0)
-            data = hcat(data, (problem.ϵ.value - problem.ϵ.value_old) / dt)
-        else
-            data = hcat(data, zeros(T, length(problem.ϵ.value)))
-        end
-        header = string(header, ",epsilon_dot")
     end
-    if hasShearDD2D(problem)
+    if hasproperty(problem, :δ)
         data = hcat(data, problem.δ.value)
         header = string(header, ",delta")
-        data = hcat(data, problem.τ.value)
-        header = string(header, ",tau")
         if (dt != 0.0)
             data = hcat(data, (problem.δ.value - problem.δ.value_old) / dt)
         else
             data = hcat(data, zeros(T, length(problem.δ.value)))
         end
         header = string(header, ",delta_dot")
+    end
+    if hasproperty(problem, :τ)
+        data = hcat(data, problem.τ.value)
+        header = string(header, ",tau")
     end
     if hasFluidCoupling(problem)
         data = hcat(data, problem.fluid_coupling[1].p)
@@ -252,10 +260,12 @@ struct CSVMaximumOutput <: AbstractOutput
 end
 
 function addHeaderToMaxCSV!(header::String, problem::AbstractDDProblem{T}) where {T<:Real}
-    if hasNormalDD(problem)
-        header = string(header, ",epsilon")
+    if hasproperty(problem, :w)
+        header = string(header, ",w")
+        header = string(header, ",w_dot")
+    end
+    if hasproperty(problem, :σ)
         header = string(header, ",sigma")
-        header = string(header, ",epsilon_dot")
     end
     if hasShearDD2D(problem)
         header = string(header, ",delta")

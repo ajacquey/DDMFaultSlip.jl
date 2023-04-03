@@ -51,7 +51,7 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
 end
 
 function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem::ShearDDProblem{T}) where {R,T<:Real}
-    if isa(problem.mesh, DDMesh1D)
+    if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric 
         # Loop over elements
         Threads.@threads for idx in eachindex(problem.mesh.elems)
             @inbounds (Res, Jac) = computeConstraints(problem.constraints[1], problem.δ.value[idx] - problem.δ.value_old[idx], problem.mesh.elems[idx].X)
@@ -76,41 +76,41 @@ function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem:
     return nothing
 end
 
-function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem::CoupledDDProblem{T}) where {R,T<:Real}
-    if isa(problem.mesh, DDMesh1D)
-        # Loop over elements
-        Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = computeConstraints(problem.constraints[1], problem.w.value[idx] - problem.w.value_old[idx], problem.mesh.elems[idx].X)
+# function assembleConstraintsResidualAndJacobian!(solver::DDSolver{R,T}, problem::CoupledDDProblem{T}) where {R,T<:Real}
+#     if isa(problem.mesh, DDMesh1D)
+#         # Loop over elements
+#         Threads.@threads for idx in eachindex(problem.mesh.elems)
+#             @inbounds (Res, Jac) = computeConstraints(problem.constraints[1], problem.w.value[idx] - problem.w.value_old[idx], problem.mesh.elems[idx].X)
 
-            @inbounds solver.rhs[idx] -= Res
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
+#             @inbounds solver.rhs[idx] -= Res
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
 
-            @inbounds (Res, Jac) = computeConstraints(problem.constraints[2], problem.δ.value[idx] - problem.δ.value_old[idx], problem.mesh.elems[idx].X)
+#             @inbounds (Res, Jac) = computeConstraints(problem.constraints[2], problem.δ.value[idx] - problem.δ.value_old[idx], problem.mesh.elems[idx].X)
 
-            @inbounds solver.rhs[problem.n + idx] -= Res
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac)
-        end
-    else
-        # Loop over elements
-        Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = computeConstraints(problem.constraints[1], problem.w.value[idx] - problem.w.value_old[idx], problem.mesh.elems[idx].X)
+#             @inbounds solver.rhs[problem.n + idx] -= Res
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac)
+#         end
+#     else
+#         # Loop over elements
+#         Threads.@threads for idx in eachindex(problem.mesh.elems)
+#             @inbounds (Res, Jac) = computeConstraints(problem.constraints[1], problem.w.value[idx] - problem.w.value_old[idx], problem.mesh.elems[idx].X)
 
-            @inbounds solver.rhs[idx] -= Res
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
+#             @inbounds solver.rhs[idx] -= Res
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
 
-            @inbounds (Res, Jac) = computeConstraints(problem.constraints[2], problem.δ.value[idx] - problem.δ.value_old[idx], problem.mesh.elems[idx].X)
+#             @inbounds (Res, Jac) = computeConstraints(problem.constraints[2], problem.δ.value[idx] - problem.δ.value_old[idx], problem.mesh.elems[idx].X)
 
-            @inbounds solver.rhs[problem.n + idx] -= Res
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac)
+#             @inbounds solver.rhs[problem.n + idx] -= Res
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac)
 
-            @inbounds (Res, Jac) = computeConstraints(problem.constraints[3], problem.δ.value[problem.n + idx] - problem.δ.value_old[problem.n + idx], problem.mesh.elems[idx].X)
+#             @inbounds (Res, Jac) = computeConstraints(problem.constraints[3], problem.δ.value[problem.n + idx] - problem.δ.value_old[problem.n + idx], problem.mesh.elems[idx].X)
 
-            @inbounds solver.rhs[2 * problem.n + idx] -= Res
-            @inbounds setLocalJacobian!(solver.mat_loc, 3, 3, idx, -Jac)
-        end
-    end
-    return nothing
-end
+#             @inbounds solver.rhs[2 * problem.n + idx] -= Res
+#             @inbounds setLocalJacobian!(solver.mat_loc, 3, 3, idx, -Jac)
+#         end
+#     end
+#     return nothing
+# end
 
 function assembleFluidCouplingResidual!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}) where {R,T<:Real}
     Threads.@threads for idx in eachindex(problem.mesh.elems)
@@ -125,38 +125,38 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Ab
     return nothing
 end
 
-function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::CoupledDDProblem{T}) where {R,T<:Real}
-    if isa(problem.mesh, DDMesh1D)
-        Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx]), SVector(problem.ϵ.value_old[idx], problem.δ.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
+# function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::CoupledDDProblem{T}) where {R,T<:Real}
+#     if isa(problem.mesh, DDMesh1D)
+#         Threads.@threads for idx in eachindex(problem.mesh.elems)
+#             @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx]), SVector(problem.ϵ.value_old[idx], problem.δ.value_old[idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx]))
             
-            @inbounds solver.rhs[idx] -= Res[1]
-            @inbounds solver.rhs[problem.n+idx] -= Res[2]
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac[1,1])
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 2, idx, -Jac[2,1])
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 1, idx, -Jac[1,2])
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac[2,2])
-        end
-    else
-        Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.ϵ.value_old[idx], problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]))
+#             @inbounds solver.rhs[idx] -= Res[1]
+#             @inbounds solver.rhs[problem.n+idx] -= Res[2]
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac[1,1])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 2, idx, -Jac[2,1])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 1, idx, -Jac[1,2])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac[2,2])
+#         end
+#     else
+#         Threads.@threads for idx in eachindex(problem.mesh.elems)
+#             @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.ϵ.value_old[idx], problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), SVector(problem.σ.value_old[idx], problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]))
 
-            @inbounds solver.rhs[idx] -= Res[1]
-            @inbounds solver.rhs[problem.n+idx] -= Res[2]
-            @inbounds solver.rhs[2*problem.n+idx] -= Res[3]
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac[1,1])
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 2, idx, -Jac[2,1])
-            @inbounds setLocalJacobian!(solver.mat_loc, 1, 3, idx, -Jac[3,1])
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 1, idx, -Jac[1,2])
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac[2,2])
-            @inbounds setLocalJacobian!(solver.mat_loc, 2, 3, idx, -Jac[3,2])
-            @inbounds setLocalJacobian!(solver.mat_loc, 3, 1, idx, -Jac[1,3])
-            @inbounds setLocalJacobian!(solver.mat_loc, 3, 2, idx, -Jac[2,3])
-            @inbounds setLocalJacobian!(solver.mat_loc, 3, 3, idx, -Jac[3,3])
-        end
-    end
-    return nothing
-end
+#             @inbounds solver.rhs[idx] -= Res[1]
+#             @inbounds solver.rhs[problem.n+idx] -= Res[2]
+#             @inbounds solver.rhs[2*problem.n+idx] -= Res[3]
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac[1,1])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 2, idx, -Jac[2,1])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 1, 3, idx, -Jac[3,1])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 1, idx, -Jac[1,2])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac[2,2])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 2, 3, idx, -Jac[3,2])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 3, 1, idx, -Jac[1,3])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 3, 2, idx, -Jac[2,3])
+#             @inbounds setLocalJacobian!(solver.mat_loc, 3, 3, idx, -Jac[3,3])
+#         end
+#     end
+#     return nothing
+# end
 
 # function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::CoupledDDProblem2D{T}) where {R,T<:Real}
 #     Threads.@threads for idx in eachindex(problem.mesh.elems)
@@ -240,7 +240,7 @@ function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<
 end
 
 function update!(problem::ShearDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:Real}
-    if isa(problem.mesh, DDMesh1D)
+    if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric 
         # Loop over elements
         Threads.@threads for idx in eachindex(problem.mesh.elems)
             @inbounds problem.δ.value[idx] = problem.δ.value_old[idx] + solver.solution[idx]
@@ -256,41 +256,41 @@ function update!(problem::ShearDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:
     return nothing
 end
 
-function update!(problem::CoupledDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:Real}
-    # Traction increment
-    Δt = zeros(T, problem.n_dof)
-    mul!(Δt, solver.E, solver.solution)
+# function update!(problem::CoupledDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:Real}
+#     # Traction increment
+#     Δt = zeros(T, problem.n_dof)
+#     mul!(Δt, solver.E, solver.solution)
 
-    if isa(problem.mesh, DDMesh1D)
-        # Loop over elements
-        Threads.@threads for idx in eachindex(problem.mesh.elems)
-            # Update DD
-            @inbounds problem.w.value[idx] = problem.w.value_old[idx] + solver.solution[idx]
-            @inbounds problem.δ.value[idx] = problem.δ.value_old[idx] + solver.solution[problem.n+idx]
-            # Update traction
-            @inbounds problem.σ.value[idx] = problem.σ.value_old[idx] + Δt[idx]
-            @inbounds problem.τ.value[idx] = problem.τ.value_old[idx] + Δt[problem.n+idx]
-        end
-    else
-        # Loop over elements
-        Threads.@threads for idx in eachindex(problem.mesh.elems)
-            # Update DD
-            @inbounds problem.w.value[idx] = problem.w.value_old[idx] + solver.solution[idx]
-            @inbounds problem.δ.value[idx] = problem.δ.value_old[idx] + solver.solution[problem.n+idx]
-            @inbounds problem.δ.value[idx+problem.n] = problem.δ.value_old[idx+problem.n] + solver.solution[idx+2*problem.n]
-            # Update traction
-            @inbounds problem.σ.value[idx] = problem.σ.value_old[idx] + Δt[idx]
-            @inbounds problem.τ.value[idx] = problem.τ.value_old[idx] + Δt[problem.n+idx]
-            @inbounds problem.τ.value[idx+problem.n] = problem.τ.value_old[idx+problem.n] + Δt[idx+2*problem.n]
-        end
-    end
-    # Fluid coupling
-    if hasFluidCoupling(problem)
-        problem.σ.value -= (problem.fluid_coupling[1].p - problem.fluid_coupling[1].p_old)
-    end
+#     if isa(problem.mesh, DDMesh1D)
+#         # Loop over elements
+#         Threads.@threads for idx in eachindex(problem.mesh.elems)
+#             # Update DD
+#             @inbounds problem.w.value[idx] = problem.w.value_old[idx] + solver.solution[idx]
+#             @inbounds problem.δ.value[idx] = problem.δ.value_old[idx] + solver.solution[problem.n+idx]
+#             # Update traction
+#             @inbounds problem.σ.value[idx] = problem.σ.value_old[idx] + Δt[idx]
+#             @inbounds problem.τ.value[idx] = problem.τ.value_old[idx] + Δt[problem.n+idx]
+#         end
+#     else
+#         # Loop over elements
+#         Threads.@threads for idx in eachindex(problem.mesh.elems)
+#             # Update DD
+#             @inbounds problem.w.value[idx] = problem.w.value_old[idx] + solver.solution[idx]
+#             @inbounds problem.δ.value[idx] = problem.δ.value_old[idx] + solver.solution[problem.n+idx]
+#             @inbounds problem.δ.value[idx+problem.n] = problem.δ.value_old[idx+problem.n] + solver.solution[idx+2*problem.n]
+#             # Update traction
+#             @inbounds problem.σ.value[idx] = problem.σ.value_old[idx] + Δt[idx]
+#             @inbounds problem.τ.value[idx] = problem.τ.value_old[idx] + Δt[problem.n+idx]
+#             @inbounds problem.τ.value[idx+problem.n] = problem.τ.value_old[idx+problem.n] + Δt[idx+2*problem.n]
+#         end
+#     end
+#     # Fluid coupling
+#     if hasFluidCoupling(problem)
+#         problem.σ.value -= (problem.fluid_coupling[1].p - problem.fluid_coupling[1].p_old)
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
 # function update!(problem::ShearDDProblem2D{T}, solver::DDSolver{R,T}) where {R,T<:Real}
 #     # Loop over elements

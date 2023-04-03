@@ -44,48 +44,27 @@ end
         # Error less than 2%
         @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
-    # @testset "PWC 3D, ν = 0, x" begin
-    #     # Create mesh
-    #     mesh = DDMesh2D(Float64, "mesh.msh")
+    @testset "PWC 3D, ν = 0" begin
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh.msh")
 
-    #     # Elastic property
-    #     μ = 1.0
-    #     ν = 0.0
+        # Elastic property
+        μ = 1.0
+        ν = 0.0
 
-    #     # Create problem
-    #     problem = ShearDDProblem(mesh; μ=μ, ν=ν)
-    #     addConstraint!(problem, FunctionConstraint(τ_cst), :x)
+        # Create problem
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
+        addConstraint!(problem, FunctionConstraint(τ_cst))
 
-    #     # Run problem
-    #     run!(problem; log=false, pc=false)
+        # Run problem
+        run!(problem; log=true)
         
-    #     # Analytical solution
-    #     δ_sol = δ_analytical_3D(mesh, μ, ν)
+        # Analytical solution
+        δ_sol = δ_analytical_3D(mesh, μ, ν)
         
-    #     # Error less than 4%
-    #     @test isapprox(problem.δ.value[1:problem.n], δ_sol; rtol=4.0e-02)
-    # end
-    # @testset "PWC 3D, ν = 0, y" begin
-    #     # Create mesh
-    #     mesh = DDMesh2D(Float64, "mesh.msh")
-
-    #     # Elastic property
-    #     μ = 1.0
-    #     ν = 0.0
-
-    #     # Create problem
-    #     problem = ShearDDProblem(mesh; μ=μ, ν=ν)
-    #     addConstraint!(problem, FunctionConstraint(τ_cst), :y)
-
-    #     # Run problem
-    #     run!(problem; log=false, pc=false)
-
-    #     # Analytical solution
-    #     δ_sol = δ_analytical_3D(mesh, μ, ν)
-
-    #     # Error less than 4%
-    #     @test isapprox(problem.δ.value[problem.n+1:2*problem.n], δ_sol; rtol=4.0e-02)
-    # end
+        # Error less than 4%
+        @test isapprox(problem.δ.value, δ_sol; rtol=4.0e-02)
+    end
     @testset "PWC 3D, ν = 0.25, x" begin
         # Create mesh
         mesh = DDMesh2D(Float64, "mesh.msh")
