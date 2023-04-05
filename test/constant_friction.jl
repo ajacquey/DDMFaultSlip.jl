@@ -236,7 +236,7 @@ end
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=0.35)
 
         # Run problem
-        run!(problem, time_stepper, log=false, nl_abs_tol=1.0e-08)
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
 
         # Analytical solutions
         δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
@@ -277,6 +277,46 @@ end
 
         # Error less than 4%
         @test isapprox(problem.δ.value, δ_sol; rtol=4.0e-02)
+    end
+    @testset "3D: ν=0.2, T = 4.0" begin
+        Ts = 4.0
+        function τ₀(X, sym)
+            if (sym == :x)
+                return f * (σ₀(X) .- Δpᵢ * Ts)
+            else
+                return zeros(length(X))
+            end
+        end
+
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh.msh")
+
+        # Create problem
+        problem = ShearDDProblem(mesh; μ=μ, ν=0.2)
+
+        # ICs
+        addNormalStressIC!(problem, σ₀)
+        addShearStressIC!(problem, τ₀)
+
+        # Fluid coupling
+        addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
+
+        # Constant yield (dummy plastic model)
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
+
+        time_seq = collect(range(0.0, stop=500.0, length=6))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=500.0)
+
+        # Run problem
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
+
+        # No analytical solution
+        @test true
+        # # Analytical solutions
+        # δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
+
+        # # Error less than 4%
+        # @test isapprox(problem.δ.value, δ_sol; rtol=4.0e-02)
     end
 end
 

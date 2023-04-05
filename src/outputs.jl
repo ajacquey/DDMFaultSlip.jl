@@ -106,7 +106,7 @@ function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time:
         end 
     end
     if hasFluidCoupling(problem)
-        vtk["p", VTKCellData()] = problem.fluid_coupling[1].p
+        vtk["p", VTKCellData()] = problem.fluid_coupling.p
     end
     vtk["element_id", VTKCellData()] = collect(1:length(out.vtk_cells))
     vtk["node_id", VTKPointData()] = collect(1:size(out.vtk_points, 2))

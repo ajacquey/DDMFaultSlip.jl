@@ -279,13 +279,13 @@ function Base.getindex(K::DD3DShearJacobianMatrix, i::Int, j::Int)
     if i <= K.n
         if j <= K.n
             if ((i == j) && (i in K.mat_loc[1,1].nzind))
-                return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j])) + mat_loc[1,1][i]
+                return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j])) + K.mat_loc[1,1][i]
             else
                 return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j]))
             end
         else
             if ((i == (j - K.n)) && (i in K.mat_loc[1,2].nzind))
-                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i], K.e[j-K.n]) + mat_loc[1,2][i]
+                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i], K.e[j-K.n]) + K.mat_loc[1,2][i]
             else
                 return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i], K.e[j-K.n])
             end
@@ -293,7 +293,7 @@ function Base.getindex(K::DD3DShearJacobianMatrix, i::Int, j::Int)
     else
         if j <= K.n
             if ((i == (j + K.n)) && (j in K.mat_loc[2,1].nzind))
-                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i-K.n], K.e[j]) + mat_loc[2,1][i-K.n]
+                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i-K.n], K.e[j]) + K.mat_loc[2,1][i-K.n]
             else
                 return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i-K.n], K.e[j])
             end

@@ -50,7 +50,7 @@ function applyFrictionalConstraints(cst::AbstractFriction, Δu::SVector{N,T}, u_
         # Post return map update
         postReturnMap(cst, Δp)
         # Jacobian
-        return (computeTraction(cst, Δu, Δuᵖ), computeTractionDerivative(cst, t_tr, Δu, Δuᵖ))
+        return (computeTraction(cst, Δu, Δuᵖ), computeTractionDerivative(cst, σ, t_tr, Δuᵖ))
     end
 end
 
@@ -94,8 +94,8 @@ function computeTraction(cst::AbstractFriction, Δδ::SVector{2,T}, Δδᵖ::SVe
     return SVector(cst.k * (Δδ[1] - Δδᵖ[1]), cst.k * (Δδ[2] - Δδᵖ[2]))
 end
 
-function computeTractionDerivative(cst::AbstractFriction, σ::T, t_tr::SVector{2,T}, Δδᵖ::SVector{2,T})::SMatrix{2,2,T} where {T<:Real}
-    dΔδᵖ = computePlasticDDDerivative(cst, σ, t_tr, computeScalarPlasticDD(cst, Δδᵖ))
+function computeTractionDerivative(cst::AbstractFriction, σ::T, t_tr::SVector{2,T}, Δuᵖ::SVector{2,T})::SMatrix{2,2,T} where {T<:Real}
+    dΔδᵖ = computePlasticDDDerivative(cst, σ, t_tr, computeScalarPlasticDD(cst, Δuᵖ))
     return SMatrix{2}(cst.k * (1.0 - dΔδᵖ[1, 1]), -cst.k * dΔδᵖ[1, 2], -cst.k * dΔδᵖ[2, 1], cst.k * (1.0 - dΔδᵖ[2, 2]))
 end
 

@@ -102,7 +102,7 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Sh
         end
     else
         Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]))
+            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]))
 
             @inbounds solver.rhs[idx] -= Res[1]
             @inbounds solver.rhs[problem.n+idx] -= Res[2]
