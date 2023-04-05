@@ -28,6 +28,9 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " Constraints"
     constraints::AbstractConstraint
 
+    " Frictional constraint"
+    friction::AbstractFriction
+
     " Pressure coupling"
     fluid_coupling::AbstractFluidCoupling
 
@@ -40,6 +43,7 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
             Variable(T, :w, length(mesh.elems)),
             AuxVariable(T, :σ, length(mesh.elems)),
             DefaultConstraint(),
+            DefaultFriction(),
             DefaultFluidCoupling(),
             # Vector{AbstractCohesiveZone}(undef, 0),
         )
@@ -77,6 +81,9 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     " A vector of Constraints"
     constraints::Vector{AbstractConstraint}
 
+    " Frictional constraint"
+    friction::AbstractFriction
+
     " Pressure coupling"
     fluid_coupling::AbstractFluidCoupling
 
@@ -88,6 +95,7 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                 AuxVariable(T, :σ, length(mesh.elems)),
                 AuxVariable(T, :τ, length(mesh.elems)),
                 [DefaultConstraint()],
+                DefaultFriction(),
                 DefaultFluidCoupling(),
             )
         else
@@ -97,6 +105,7 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                     AuxVariable(T, :σ, length(mesh.elems)),
                     AuxVariable(T, :τ, length(mesh.elems)),
                     [DefaultConstraint()],
+                    DefaultFriction(),
                     DefaultFluidCoupling(),
                 )
             else
@@ -105,6 +114,7 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                     AuxVariable(T, :σ, length(mesh.elems)),
                     AuxVariable(T, :τ, 2*length(mesh.elems)),
                     [DefaultConstraint(), DefaultConstraint()],
+                    DefaultFriction(),
                     DefaultFluidCoupling(),
                 )
             end
@@ -255,6 +265,8 @@ function applyShearDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
     # else
     #     throw(ErrorException("No shear IC in this problem!"))
     end
+    problem.σ.value = problem.σ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
+    problem.σ.value_old = copy(problem.σ.value)
     return nothing
 end
 
@@ -320,25 +332,21 @@ end
 #     return nothing
 # end
 
-# function hasFrictionConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-#     if hasproperty(problem, :friction)
-#         return ~isempty(problem.friction)
-#     else
-#         return false
-#     end
-# end
+function hasFrictionConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return ~isa(problem.friction, DefaultFriction)
+end
 
-# function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::AbstractFriction{T}) where {T<:Real}
-#     # Check if problem has friction
-#     if (hasFrictionConstraint(problem))
-#         throw(ErrorException("The problem already has a FrictionConstraint!"))
-#     end
+function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::AbstractFriction) where {T<:Real}
+    # Check if problem has friction
+    if (hasFrictionConstraint(problem))
+        throw(ErrorException("The problem already has a FrictionConstraint!"))
+    end
 
-#     # Add FrictionConstraint
-#     push!(problem.friction, friction)
+    # Add FrictionConstraint
+    problem.friction = friction
 
-#     return nothing
-# end
+    return nothing
+end
 
 function hasFluidCoupling(problem::AbstractDDProblem{T})::Bool where {T<:Real}
     return ~isa(problem.fluid_coupling, DefaultFluidCoupling)
@@ -394,7 +402,7 @@ function reinit!(problem::AbstractDDProblem{T}) where {T<:Real}
     end
     # Fluid coupling
     if hasFluidCoupling(problem)
-        problem.fluid_coupling[1].p_old = copy(problem.fluid_coupling[1].p)
+        problem.fluid_coupling.p_old = copy(problem.fluid_coupling.p)
     end
     return nothing
 end

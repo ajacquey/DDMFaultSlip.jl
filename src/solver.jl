@@ -82,8 +82,10 @@ mutable struct DDSolver{R,T<:Real}
         # Assemble collocation matrix
         if isa(problem.mesh, DDMesh1D)
             K = DD2DElasticMatrix(problem.mesh, problem.μ)
+            Kj = DD2DJacobianMatrix(problem.mesh, mat_loc, problem.μ)
         elseif isa(problem.mesh, DDMesh2D)
             K = DD3DNormalElasticMatrix(problem.mesh, problem.μ, problem.ν)
+            Kj = DD3DNormalJacobianMatrix(problem.mesh, mat_loc, problem.μ, problem.ν)
         end
         # Cluster tree
         Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
@@ -105,7 +107,7 @@ mutable struct DDSolver{R,T<:Real}
         checkLinearSolver(l_solver)
 
         R = typeof(E.coltree)
-        return new{R,T}(mat, mat_loc, E, K, comp, adm, Xclt, 
+        return new{R,T}(mat, mat_loc, E, Kj, comp, adm, Xclt, 
             Pc, zeros(T, n_dof), zeros(T, n_dof),
             pc, pc_atol,
             nl_max_it, nl_abs_tol, nl_rel_tol,
@@ -132,14 +134,17 @@ mutable struct DDSolver{R,T<:Real}
         # Assemble collocation matrix
         if isa(problem.mesh, DDMesh1D)
             K = DD2DElasticMatrix(problem.mesh, problem.μ)
+            Kj = DD2DJacobianMatrix(problem.mesh, mat_loc, problem.μ)
             # Cluster tree
             Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         else
             if (problem.ν == 0.0)
                 K = DD3DShearAxisSymmetricElasticMatrix(problem.mesh, problem.μ)
+                Kj = DD3DShearAxisSymmetricJacobianMatrix(problem.mesh, mat_loc, problem.μ)
                 Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
             else
                 K = DD3DShearElasticMatrix(problem.mesh, problem.μ, problem.ν)
+                Kj = DD3DShearJacobianMatrix(problem.mesh, mat_loc, problem.μ, problem.ν)
                 # Cluster tree
                 Xclt = ClusterTree(repeat([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], 2))
             end
@@ -162,7 +167,7 @@ mutable struct DDSolver{R,T<:Real}
         checkLinearSolver(l_solver)
 
         R = typeof(E.coltree)
-        return new{R,T}(mat, mat_loc, E, K, comp, adm, Xclt, 
+        return new{R,T}(mat, mat_loc, E, Kj, comp, adm, Xclt, 
             Pc, zeros(T, n_dof), zeros(T, n_dof),
             pc, pc_atol,
             nl_max_it, nl_abs_tol, nl_rel_tol,

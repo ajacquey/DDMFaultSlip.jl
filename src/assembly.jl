@@ -15,10 +15,10 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
         if hasConstraint(problem)
             @timeit timer "Constraints" assembleConstraintsResidualAndJacobian!(solver, problem)
         end
-        # # Imposed Frictional constraints
-        # if hasFrictionConstraint(problem)
-        #     @timeit timer "Frictional constraints" assembleFrictionResidualAndJacobian!(solver, problem)
-        # end
+        # Imposed Frictional constraints
+        if hasFrictionConstraint(problem)
+            @timeit timer "Frictional constraints" assembleFrictionResidualAndJacobian!(solver, problem)
+        end
         # # Imposed Cohesive Zone constraints
         # if hasCohesiveZoneConstraint(problem)
         #     @timeit timer "Cohesive zone constraints" assembleCohesiveZoneResidualAndJacobian!(solver, problem)
@@ -112,16 +112,46 @@ end
 #     return nothing
 # end
 
-function assembleFluidCouplingResidual!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}) where {R,T<:Real}
+function assembleFluidCouplingResidual!(solver::DDSolver{R,T}, problem::NormalDDProblem{T}) where {R,T<:Real}
     Threads.@threads for idx in eachindex(problem.mesh.elems)
-        @inbounds solver.rhs[idx] -= problem.fluid_coupling[1].p[idx] - problem.fluid_coupling[1].p_old[idx]
+        @inbounds solver.rhs[idx] -= problem.fluid_coupling.p[idx] - problem.fluid_coupling.p_old[idx]
     end
 
     return nothing
 end
 
+function assembleFluidCouplingResidual!(solver::DDSolver{R,T}, problem::ShearDDProblem{T}) where {R,T<:Real}
+    problem.σ.value = problem.σ.value_old
+    problem.σ.value -= problem.fluid_coupling.p - problem.fluid_coupling.p_old
+    return nothing
+end
+
+
 # Frictional constraints
 function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}) where {R,T<:Real}
+    return nothing
+end
+
+function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::ShearDDProblem{T}) where {R,T<:Real}
+    if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric 
+        Threads.@threads for idx in eachindex(problem.mesh.elems)
+            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value_old[idx], problem.σ.value[idx], problem.τ.value_old[idx])
+            
+            @inbounds solver.rhs[idx] -= Res
+            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
+        end
+    else
+        Threads.@threads for idx in eachindex(problem.mesh.elems)
+            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction[1], SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]))
+
+            @inbounds solver.rhs[idx] -= Res[1]
+            @inbounds solver.rhs[problem.n+idx] -= Res[2]
+            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac[1,1])
+            @inbounds setLocalJacobian!(solver.mat_loc, 1, 2, idx, -Jac[1,2])
+            @inbounds setLocalJacobian!(solver.mat_loc, 2, 1, idx, -Jac[2,1])
+            @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac[2,2])
+        end
+    end
     return nothing
 end
 
@@ -233,7 +263,7 @@ function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<
     problem.σ.value = problem.σ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution)
     # Fluid coupling
     if hasFluidCoupling(problem)
-        problem.σ.value -= problem.fluid_coupling[1].p + problem.fluid_coupling[1].p_old
+        problem.σ.value -= problem.fluid_coupling.p + problem.fluid_coupling.p_old
     end
 
     return nothing
@@ -252,7 +282,13 @@ function update!(problem::ShearDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:
             @inbounds problem.δ.value[idx+problem.n] = problem.δ.value_old[idx+problem.n] + solver.solution[idx+problem.n]
         end
     end
-    problem.τ.value = problem.τ.value_old + mul!(zeros(T, size(solver.solution)), solver.mat, solver.solution)
+    problem.σ.value = problem.σ.value_old
+    problem.τ.value = problem.τ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution)
+    # Fluid coupling
+    if hasFluidCoupling(problem)
+        problem.σ.value -= problem.fluid_coupling.p - problem.fluid_coupling.p_old
+    end
+
     return nothing
 end
 
@@ -370,7 +406,7 @@ function computePressureCoupling!(problem::AbstractDDProblem{T}, time::T, timer:
     # Check if problem has pressure coupling
     if hasFluidCoupling(problem)
         @timeit timer "Pressure update" begin
-            updatePressure!(problem.fluid_coupling[1], [problem.mesh.elems[idx].X for idx in eachindex(problem.mesh.elems)], time)
+            updatePressure!(problem.fluid_coupling, [problem.mesh.elems[idx].X for idx in eachindex(problem.mesh.elems)], time)
         end
     end
 

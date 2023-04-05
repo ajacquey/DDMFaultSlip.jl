@@ -57,7 +57,7 @@ end
         addConstraint!(problem, FunctionConstraint(τ_cst))
 
         # Run problem
-        run!(problem; log=true)
+        run!(problem; log=false)
         
         # Analytical solution
         δ_sol = δ_analytical_3D(mesh, μ, ν)

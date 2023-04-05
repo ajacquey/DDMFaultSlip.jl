@@ -257,6 +257,140 @@ function Base.size(K::DD3DCoupledElasticMatrix)
 end
 
 """
+Piecewise constant (PWC) two-dimensional jacobian matrix
+"""
+struct DD2DJacobianMatrix{T<:Real} <: ElasticKernelMatrix{T}
+    e::Vector{DDEdgeElem{T}}
+    mat_loc::Matrix{SparseVector{T,Int}}
+    μ::T
+    n::Int
+
+    # Constructor
+    function DD2DJacobianMatrix(mesh::DDMesh1D{T}, mat_loc::Matrix{SparseVector{T,Int}}, μ::T) where {T<:Real}
+        return new{T}(mesh.elems, mat_loc, μ, length(mesh.elems))
+    end
+end
+
+function Base.getindex(K::DD2DJacobianMatrix, i::Int, j::Int)
+    if ((i == j) && (i in K.mat_loc[1,1].nzind))
+        return 2.0 * K.μ * norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0) / (π * (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2)) + K.mat_loc[1,1][i]
+    else
+        return 2.0 * K.μ * norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0) / (π * (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2))
+    end
+end
+
+function Base.size(K::DD2DJacobianMatrix)
+    return K.n, K.n
+end
+
+"""
+Piecewise constant (PWC) three-dimensional normal jacobian matrix
+"""
+struct DD3DNormalJacobianMatrix{T<:Real} <: ElasticKernelMatrix{T}
+    e::Vector{DDTriangleElem{T}}
+    mat_loc::Matrix{SparseVector{T,Int}}
+    μ::T
+    ν::T
+    n::Int
+
+    # Constructor
+    function DD3DNormalJacobianMatrix(mesh::DDMesh2D{T}, mat_loc::Matrix{SparseVector{T,Int}}, μ::T, ν::T) where {T<:Real}
+        return new{T}(mesh.elems, mat_loc, μ, ν, length(mesh.elems))
+    end
+end
+
+function Base.getindex(K::DD3DNormalJacobianMatrix, i::Int, j::Int)
+    if ((i == j) && (i in K.mat_loc[1,1].nzind))
+        return K.μ / (4 * π * (1.0 - K.ν)) * integralI003(K.e[i], K.e[j]) + K.mat_loc[1,1][i]
+    else
+        return K.μ / (4 * π * (1.0 - K.ν)) * integralI003(K.e[i], K.e[j])
+    end
+end
+
+function Base.size(K::DD3DNormalJacobianMatrix)
+    return K.n, K.n
+end
+
+"""
+Piecewise constant (PWC) three-dimensional shear axis symmetric jacobian matrix
+"""
+struct DD3DShearAxisSymmetricJacobianMatrix{T<:Real} <: ElasticKernelMatrix{T}
+    e::Vector{DDTriangleElem{T}}
+    mat_loc::Matrix{SparseVector{T,Int}}
+    μ::T
+    n::Int
+
+    # Constructor
+    function DD3DShearAxisSymmetricJacobianMatrix(mesh::DDMesh2D{T}, mat_loc::Matrix{SparseVector{T,Int}}, μ::T) where {T<:Real}
+        return new{T}(mesh.elems, mat_loc, μ, length(mesh.elems))
+    end
+end
+
+function Base.getindex(K::DD3DShearAxisSymmetricJacobianMatrix, i::Int, j::Int)
+    if ((i == j) && (i in K.mat_loc[1,1].nzind))
+        return K.μ / (4 * π) * integralI003(K.e[i], K.e[j]) + K.mat_loc[1,1][i]
+    else
+        return K.μ / (4 * π) * integralI003(K.e[i], K.e[j])
+    end
+end
+
+function Base.size(K::DD3DShearAxisSymmetricJacobianMatrix)
+    return K.n, K.n
+end
+
+"""
+Piecewise constant (PWC) three-dimensional shear jacobian matrix
+"""
+struct DD3DShearJacobianMatrix{T<:Real} <: ElasticKernelMatrix{T}
+    e::Vector{DDTriangleElem{T}}
+    mat_loc::Matrix{SparseVector{T,Int}}
+    μ::T
+    ν::T
+    n::Int
+
+    # Constructor
+    function DD3DShearJacobianMatrix(mesh::DDMesh2D{T}, mat_loc::Matrix{SparseVector{T,Int}}, μ::T, ν::T) where {T<:Real}
+        return new{T}(mesh.elems, mat_loc, μ, ν, length(mesh.elems))
+    end
+end
+
+function Base.getindex(K::DD3DShearJacobianMatrix, i::Int, j::Int)
+    if i <= K.n
+        if j <= K.n
+            if ((i == j) && (i in K.mat_loc[1,1].nzind))
+                return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j])) + mat_loc[1,1][i]
+            else
+                return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i], K.e[j]) + 3.0 * K.ν * integralI205(K.e[i], K.e[j]))
+            end
+        else
+            if ((i == (j - K.n)) && (i in K.mat_loc[1,2].nzind))
+                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i], K.e[j-K.n]) + mat_loc[1,2][i]
+            else
+                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i], K.e[j-K.n])
+            end
+        end
+    else
+        if j <= K.n
+            if ((i == (j + K.n)) && (j in K.mat_loc[2,1].nzind))
+                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i-K.n], K.e[j]) + mat_loc[2,1][i-K.n]
+            else
+                return 3.0 * K.ν * K.μ / (4 * π * (1.0 - K.ν)) * integralI115(K.e[i-K.n], K.e[j])
+            end
+        else
+            if ((i == j) && ((i - K.n) in K.mat_loc[2,2].nzind))
+                return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i-K.n], K.e[j-K.n]) + 3.0 * K.ν * integralI025(K.e[i-K.n], K.e[j-K.n])) + K.mat_loc[2,2][i-K.n]
+            else
+                return K.μ / (4 * π * (1.0 - K.ν)) * ((1.0 - 2 * K.ν) * integralI003(K.e[i-K.n], K.e[j-K.n]) + 3.0 * K.ν * integralI025(K.e[i-K.n], K.e[j-K.n]))
+            end
+        end
+    end
+end
+
+function Base.size(K::DD3DShearJacobianMatrix)
+    return 2 * K.n, 2 * K.n
+end
+
+"""
 Piecewise constant (PWC) two-dimensional coupled jacobian matrix
 """
 struct DD2DCoupledJacobianMatrix{T<:Real} <: ElasticKernelMatrix{T}

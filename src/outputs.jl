@@ -195,7 +195,7 @@ function addDataToCSV!(data::Matrix{T}, header::String, problem::AbstractDDProbl
         header = string(header, ",tau")
     end
     if hasFluidCoupling(problem)
-        data = hcat(data, problem.fluid_coupling[1].p)
+        data = hcat(data, problem.fluid_coupling.p)
         header = string(header, ",p")
     end
     header = string(header, "\n")
@@ -267,18 +267,19 @@ function addHeaderToMaxCSV!(header::String, problem::AbstractDDProblem{T}) where
     if hasproperty(problem, :σ)
         header = string(header, ",sigma")
     end
-    if hasShearDD2D(problem)
-        header = string(header, ",delta")
-        header = string(header, ",tau")
-        header = string(header, ",delta_dot")
-    end
-    if hasShearDD3D(problem)
-        header = string(header, ",delta_x")
-        header = string(header, ",delta_y")
-        header = string(header, ",tau_x")
-        header = string(header, ",tau_y")
-        header = string(header, ",delta_x_dot")
-        header = string(header, ",delta_y_dot")
+    if hasproperty(problem, :δ)
+        if (problem.n == problem.n_dof)
+            header = string(header, ",delta")
+            header = string(header, ",tau")
+            header = string(header, ",delta_dot")
+        else
+            header = string(header, ",delta_x")
+            header = string(header, ",delta_y")
+            header = string(header, ",tau_x")
+            header = string(header, ",tau_y")
+            header = string(header, ",delta_x_dot")
+            header = string(header, ",delta_y_dot")
+        end      
     end
     if hasFluidCoupling(problem)
         header = string(header, ",p")
@@ -289,39 +290,42 @@ function addHeaderToMaxCSV!(header::String, problem::AbstractDDProblem{T}) where
 end
 
 function addDataToMaxCSV!(data::T, problem::AbstractDDProblem{T}, dt::T) where {T<:Real}
-    if hasNormalDD(problem)
-        data = hcat(data, maximum(problem.ϵ.value))
+    if hasproperty(problem, :w)
+        data = hcat(data, maximum(problem.w.value))
+        if (dt != 0.0)
+            data = hcat(data, maximum(problem.w.value - problem.w.value_old) / dt)
+        else
+            data = hcat(data, 0.0)
+        end
+    end
+    if hasproperty(problem, :σ)
         data = hcat(data, maximum(problem.σ.value))
-        if (dt != 0.0)
-            data = hcat(data, maximum(problem.ϵ.value - problem.ϵ.value_old) / dt)
-        else
-            data = hcat(data, 0.0)
-        end
     end
-    if hasShearDD2D(problem)
-        data = hcat(data, maximum(problem.δ.value))
-        data = hcat(data, maximum(problem.τ.value))
-        if (dt != 0.0)
-            data = hcat(data, maximum(problem.δ.value - problem.δ.value_old) / dt)
+    if hasproperty(problem, :δ)
+        if (problem.n == problem.n_dof)
+            data = hcat(data, maximum(problem.δ.value))
+            data = hcat(data, maximum(problem.τ.value))
+            if (dt != 0.0)
+                data = hcat(data, maximum(problem.δ.value - problem.δ.value_old) / dt)
+            else
+                data = hcat(data, 0.0)
+            end
         else
-            data = hcat(data, 0.0)
-        end
-    end
-    if hasShearDD3D(problem)
-        data = hcat(data, maximum(problem.δ_x.value))
-        data = hcat(data, maximum(problem.δ_y.value))
-        data = hcat(data, maximum(problem.τ_x.value))
-        data = hcat(data, maximum(problem.τ_y.value))
-        if (dt != 0.0)
-            data = hcat(data, maximum(problem.δ_x.value - problem.δ_x.value_old) / dt)
-            data = hcat(data, maximum(problem.δ_y.value - problem.δ_y.value_old) / dt)
-        else
-            data = hcat(data, 0.0)
-            data = hcat(data, 0.0)
+            data = hcat(data, maximum(problem.δ_x.value))
+            data = hcat(data, maximum(problem.δ_y.value))
+            data = hcat(data, maximum(problem.τ_x.value))
+            data = hcat(data, maximum(problem.τ_y.value))
+            if (dt != 0.0)
+                data = hcat(data, maximum(problem.δ_x.value - problem.δ_x.value_old) / dt)
+                data = hcat(data, maximum(problem.δ_y.value - problem.δ_y.value_old) / dt)
+            else
+                data = hcat(data, 0.0)
+                data = hcat(data, 0.0)
+            end
         end
     end
     if hasFluidCoupling(problem)
-        data = hcat(data, maximum(problem.fluid_coupling[1].p))
+        data = hcat(data, maximum(problem.fluid_coupling.p))
     end
 
     return data

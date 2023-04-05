@@ -19,8 +19,7 @@ include("injection_utils.jl")
 # Friction properties
 f = 0.5
 h = 1.0e-05
-kₙ = μ / h
-kₛ = μ / h
+k = μ / h
 
 function σ₀(X)
     return ones(length(X))
@@ -104,7 +103,7 @@ end
         mesh = DDMesh1D(start_point, end_point, N)
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -113,19 +112,19 @@ end
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
-        # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantFriction(f, kₙ, kₛ))
+        # Constant friction
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         # Time sequence
         time_seq = collect(range(0.0, stop=10.0, length=11))
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
 
         # Run problem
-        run!(problem, time_stepper; log=false)
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
 
         # Analytical solutions
         δ_sol = δ_analytical_2D(mesh, Ts, time_seq[end])
-
+        
         # Error less than 2%
         @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
@@ -143,7 +142,7 @@ end
         mesh = DDMesh1D(start_point, end_point, N)
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -152,8 +151,8 @@ end
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
-        # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantFriction(f, kₙ, kₛ))
+        # Constant friction
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         # Time sequence
         time_seq = collect(range(0.0, stop=10.0, length=11))
@@ -164,7 +163,7 @@ end
 
         # Analytical solutions
         δ_sol = δ_analytical_2D(mesh, Ts, time_seq[end])
-
+        
         # Error less than 2%
         @test isapprox(problem.δ.value, δ_sol; rtol=2.0e-02)
     end
@@ -182,7 +181,7 @@ end
         mesh = DDMesh1D(start_point, end_point, N)
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -191,8 +190,8 @@ end
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
-        # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantFriction(f, kₙ, kₛ))
+        # Constant friction
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         # Time sequence
         time_seq = collect(range(0.0, stop=10.0, length=11))
@@ -209,7 +208,7 @@ end
     end
     @testset "3D: T = 0.01" begin
         Ts = 0.01
-        function τ₀_x(X)
+        function τ₀(X)
             return f * (σ₀(X) .- Δpᵢ * Ts)
         end
 
@@ -221,67 +220,63 @@ end
         mesh = DDMesh2D(Float64, "mesh.msh")
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
 
         # ICs
         addNormalStressIC!(problem, σ₀)
-        addShearStressIC!(problem, SVector(τ₀_x, τ₀_y))
+        addShearStressIC!(problem, τ₀)
 
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
 
         # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantFriction(f, kₛ, kₙ))
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         time_seq = collect(range(0.0, stop=0.35, length=11))
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=0.35)
 
         # Run problem
-        run!(problem, time_stepper, log=false)
+        run!(problem, time_stepper, log=false, nl_abs_tol=1.0e-08)
 
         # Analytical solutions
         δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
 
         # Error less than 5.0%
-        @test isapprox(problem.δ_x.value, δ_sol; atol=5.0e-02)
+        @test isapprox(problem.δ.value, δ_sol; atol=5.0e-02)
     end
     @testset "3D: T = 4.0" begin
         Ts = 4.0
-        function τ₀_x(X)
+        function τ₀(X)
             return f * (σ₀(X) .- Δpᵢ * Ts)
-        end
-
-        function τ₀_y(X)
-            return zeros(length(X))
         end
 
         # Create mesh
         mesh = DDMesh2D(Float64, "mesh.msh")
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
 
         # ICs
         addNormalStressIC!(problem, σ₀)
-        addShearStressIC!(problem, SVector(τ₀_x, τ₀_y))
+        addShearStressIC!(problem, τ₀)
 
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
 
         # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantFriction(f, kₛ, kₙ))
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         time_seq = collect(range(0.0, stop=1.0e+03, length=11))
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+03)
 
         # Run problem
-        run!(problem, time_stepper, log=false)
+        run!(problem, time_stepper, log=false, nl_abs_tol=1.0e-08)
 
         # Analytical solutions
         δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
 
         # Error less than 4%
-        @test isapprox(problem.δ_x.value, δ_sol; rtol=4.0e-02)
+        @test isapprox(problem.δ.value, δ_sol; rtol=4.0e-02)
     end
 end
 

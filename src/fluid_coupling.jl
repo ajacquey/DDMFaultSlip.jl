@@ -1,10 +1,6 @@
 abstract type AbstractFluidCoupling end
 
 struct DefaultFluidCoupling <: AbstractFluidCoupling
-    " Constructor"
-    function DefaultFluidCoupling()
-        return new()
-    end
 end
 
 function updatePressure!(fc::DefaultFluidCoupling, X, time::T) where {T<:Real}
