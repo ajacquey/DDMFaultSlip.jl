@@ -60,8 +60,29 @@ end
         ν = 0.0
 
         # Create problem
-        problem = ShearDDProblem3D(mesh; μ=μ, ν=ν)
-        addConstraint!(problem, :x, FunctionConstraint(σ_cst))
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
+        addConstraint!(problem, FunctionConstraint(σ_cst))
+
+        # Outputs
+        outputs = [VTKDomainOutput(mesh, "outputs/test_vtk_3d_as_shear"), CSVMaximumOutput("outputs/test_vtk_3d_as_shear")]
+
+        # Run problem
+        run!(problem; outputs=outputs, log=false)
+
+        # Test if output files exist
+        @test (isfile("outputs/test_vtk_3d_as_shear.pvd") && isfile("outputs/test_vtk_3d_as_shear_1.vtu") && isfile("outputs/test_vtk_3d_as_shear.csv"))
+    end
+    @testset "ShearDDProblem - no initial output" begin
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh.msh")
+
+        # Elastic property
+        μ = 1.0
+        ν = 0.2
+
+        # Create problem
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
+        addConstraint!(problem, FunctionConstraint(σ_cst), :x)
 
         # Outputs
         outputs = [VTKDomainOutput(mesh, "outputs/test_vtk_3d_shear"), CSVMaximumOutput("outputs/test_vtk_3d_shear")]
@@ -131,7 +152,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = ShearDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
         addConstraint!(problem, FunctionConstraint(σ_cst))
 
         # Outputs

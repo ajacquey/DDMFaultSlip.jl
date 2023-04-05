@@ -345,64 +345,58 @@ function reformPlasticDD(cst::ConstantFriction{T}, Δp::T, t_tr::SVector{2,T})::
     return Δp * plasticFlowDirection(cst, t_tr)
 end
 
-# # Constant friction model
-# mutable struct SlipWeakeningFriction{T<:Real} <: AbstractFriction{T}
-#     " Old value of slip"
-#     δ_old::T
+# Slip-weakening friction model
+mutable struct SlipWeakeningFriction{T<:Real} <: AbstractFriction
+    " Old value of slip"
+    δ_old::T
 
-#     " Peak friction coefficient"
-#     fₚ::T
+    " Peak friction coefficient"
+    fₚ::T
 
-#     " Residual friction coefficient"
-#     fᵣ::T
+    " Residual friction coefficient"
+    fᵣ::T
 
-#     " Residual slip"
-#     δᵣ::T
+    " Residual slip"
+    δᵣ::T
 
-#     " Slope of weakening"
-#     w::T
-    
-#     " Dilation coefficient"
-#     ζ::T
+    " Slope of weakening"
+    w::T
 
-#     " Normal stiffness"
-#     kₙ::T
+    " Shear stiffness"
+    k::T
 
-#     " Shear stiffness"
-#     kₛ::T
+    " Absolute tolerance"
+    abs_tol::T
 
-#     " Absolute tolerance"
-#     abs_tol::T
+    " Relative tolerance"
+    rel_tol::T
 
-#     " Relative tolerance"
-#     rel_tol::T
+    " Maximum iterations"
+    max_iter::Int
 
-#     " Maximum iterations"
-#     max_iter::Int
+    " Constructor"
+    function SlipWeakeningFriction(fₚ::T, fᵣ::T, δᵣ::T, k::T; abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
+        return new{T}(0.0, fₚ, fᵣ, δᵣ, (fₚ - fᵣ) / δᵣ, k, abs_tol, rel_tol, max_iter)
+    end
+end
 
-#     " Constructor"
-#     function SlipWeakeningFriction(fₚ::T, fᵣ::T, δᵣ::T, kₙ::T, kₛ::T; ζ::T=0.0, abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
-#         return new{T}(0.0, fₚ, fᵣ, δᵣ, (fₚ - fᵣ) / δᵣ, ζ, kₙ, kₛ, abs_tol, rel_tol, max_iter)
-#     end
-# end
+function sigmund(x::T)::T where {T<:Real}
+    return 1.0 / (1.0 + exp(-x))
+end
 
-# function sigmund(x::T)::T where {T<:Real}
-#     return 1.0 / (1.0 + exp(-x))
-# end
+function friction(cst::SlipWeakeningFriction{T}, Δp::T)::T where {T<:Real}
+    if ((cst.δ_old + Δp) < cst.δᵣ)
+        return cst.fₚ - cst.w * (cst.δ_old + Δp)
+    else
+        return cst.fᵣ
+    end
+end
 
-# function friction(cst::SlipWeakeningFriction{T}, Δp::T)::T where {T<:Real}
-#     if ((cst.δ_old + Δp) < cst.δᵣ)
-#         return cst.fₚ - cst.w * (cst.δ_old + Δp)
-#     else
-#         return cst.fᵣ
-#     end
-# end
-
-# function frictionSlipDerivative(cst::SlipWeakeningFriction{T}, Δp::T)::T where {T<:Real}
-#     # Here we use a smooth derivative for convergence
-#     k = 50.0 / cst.δᵣ
-#     return cst.w * (sigmund(k * (cst.δ_old + Δp - cst.δᵣ)) - 1.0)
-# end
+function frictionSlipDerivative(cst::SlipWeakeningFriction{T}, Δp::T)::T where {T<:Real}
+    # Here we use a smooth derivative for convergence
+    k = 50.0 / cst.δᵣ
+    return cst.w * (sigmund(k * (cst.δ_old + Δp - cst.δᵣ)) - 1.0)
+end
 
 # function plasticFlowDirection(cst::SlipWeakeningFriction{T}, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
 #     return SVector{2}(-cst.ζ, 1.0)
@@ -413,36 +407,37 @@ end
 #     return SVector{3}(-cst.ζ, t_tr[2] / τ_tr, t_tr[3] / τ_tr)
 # end
 
-# function yieldFunction(cst::SlipWeakeningFriction{T}, σ_tr::T, τ_tr::T, Δp::T)::T where {T<:Real}
-#     f = friction(cst, Δp)
-#     return (τ_tr - cst.kₛ * Δp) - f * (σ_tr + cst.kₙ * cst.ζ * Δp)
-# end
+function yieldFunction(cst::SlipWeakeningFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
+    f = friction(cst, Δp)
+    return (τ_tr - cst.k * Δp) - f * σ
+end
 
-# function yieldFunctionDerivative(cst::SlipWeakeningFriction{T}, σ_tr::T, τ_tr::T, Δp::T)::T where {T<:Real}
-#     f = friction(cst, Δp)
-#     df = frictionSlipDerivative(cst, Δp)
-#     return -cst.kₛ - f * cst.ζ * cst.kₙ -df * (σ_tr + cst.kₙ * cst.ζ * Δp)
-# end
+function yieldFunctionDerivative(cst::SlipWeakeningFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
+    f = friction(cst, Δp)
+    df = frictionSlipDerivative(cst, Δp)
+    return -cst.k - df * σ
+end
 
-# function yieldFunctionStressDerivative(cst::SlipWeakeningFriction{T}, σ_tr::T, τ_tr::T, Δp::T)::SVector{2,T} where {T<:Real}
-#     f = friction(cst, Δp)
-#     return SVector{2}(-f, 1.0)
-# end
+function yieldFunctionStressDerivative(cst::SlipWeakeningFriction{T}, σ_tr::T, τ_tr::T, Δp::T)::T where {T<:Real}
+    return 1.0
+end
 
-# function reformPlasticDD(cst::SlipWeakeningFriction{T}, Δp::T, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
-#     return Δp * plasticFlowDirection(cst, t_tr)
-# end
+function reformPlasticDD(cst::SlipWeakeningFriction{T}, Δp::T, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
+    return Δp * plasticFlowDirection(cst, t_tr)
+end
 
-# function reformPlasticDD(cst::SlipWeakeningFriction{T}, Δp::T, t_tr::SVector{3,T})::SVector{3,T} where {T<:Real}
-#     return Δp * plasticFlowDirection(cst, t_tr)
-# end
+function preReturnMap(cst::SlipWeakeningFriction{T}, δ_old::T, Δδ::T) where {T<:Real}
+    # Compute scalar old DD
+    cst.δ_old = δ_old
+    return nothing
+end
 
-# function preReturnMap(cst::SlipWeakeningFriction{T}, u_old::SVector{N,T}, Δu::SVector{N,T}) where {N,T<:Real}
-#     # Compute scalar old DD
-#     cst.δ_old = computeScalarPlasticDD(cst, u_old)
-#     return nothing
-# end
+function preReturnMap(cst::SlipWeakeningFriction{T}, u_old::SVector{N,T}, Δu::SVector{N,T}) where {N,T<:Real}
+    # Compute scalar old DD
+    cst.δ_old = computeScalarPlasticDD(cst, u_old)
+    return nothing
+end
 
-# function postReturnMap(cst::SlipWeakeningFriction{T}, Δp::T) where {T<:Real}
-#     return nothing
-# end
+function postReturnMap(cst::SlipWeakeningFriction{T}, Δp::T) where {T<:Real}
+    return nothing
+end

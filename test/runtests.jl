@@ -8,8 +8,8 @@ using Test
     include("injection.jl")
     include("fluid_coupling.jl")
     include("constant_friction.jl")
-    # include("slip_weakening_friction.jl")
+    include("slip_weakening_friction.jl")
     # include("dugdale.jl")
-    # include("outputs.jl")
-    # include("linear_solver.jl")
+    include("outputs.jl")
+    include("linear_solver.jl")
 end

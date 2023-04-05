@@ -75,22 +75,35 @@ function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time:
         if (dt != 0.0)
             vtk["w_dot", VTKCellData()] = (problem.w.value - problem.w.value_old) / dt
         else
-            vtk["w_dot", VTKCellData()] = zeros(T, length(problem.w.value))
+            vtk["w_dot", VTKCellData()] = zeros(T, problem.n)
         end
     end
     if hasproperty(problem, :σ)
         vtk["sigma", VTKCellData()] = problem.σ.value
     end
     if hasproperty(problem, :δ)
-        vtk["delta", VTKCellData()] = reshape(problem.δ.value, (problem.n, 2))'
-        if (dt != 0.0)
-            vtk["delta_dot", VTKCellData()] = reshape((problem.δ.value - problem.δ.value_old) / dt, (problem.n, 2))'
+        if (problem.n_dof == problem.n)
+            vtk["delta", VTKCellData()] = problem.δ.value
+            if (dt != 0.0)
+                vtk["delta_dot", VTKCellData()] = (problem.δ.value - problem.δ.value_old) / dt
+            else
+                vtk["delta_dot", VTKCellData()] = zeros(T, problem.n)
+            end
         else
-            vtk["delta_dot", VTKCellData()] = zeros(T, 2, problem.n)
+            vtk["delta", VTKCellData()] = reshape(problem.δ.value, (problem.n, 2))'
+            if (dt != 0.0)
+                vtk["delta_dot", VTKCellData()] = reshape((problem.δ.value - problem.δ.value_old) / dt, (problem.n, 2))'
+            else
+                vtk["delta_dot", VTKCellData()] = zeros(T, 2, problem.n)
+            end
         end
     end
     if hasproperty(problem, :τ)
-        vtk["tau", VTKCellData()] = reshape(problem.τ.value, (problem.n, 2))'
+        if (problem.n_dof == problem.n)
+            vtk["tau", VTKCellData()] = problem.τ.value
+        else
+            vtk["tau", VTKCellData()] = reshape(problem.τ.value, (problem.n, 2))'
+        end 
     end
     if hasFluidCoupling(problem)
         vtk["p", VTKCellData()] = problem.fluid_coupling[1].p
@@ -311,13 +324,13 @@ function addDataToMaxCSV!(data::T, problem::AbstractDDProblem{T}, dt::T) where {
                 data = hcat(data, 0.0)
             end
         else
-            data = hcat(data, maximum(problem.δ_x.value))
-            data = hcat(data, maximum(problem.δ_y.value))
-            data = hcat(data, maximum(problem.τ_x.value))
-            data = hcat(data, maximum(problem.τ_y.value))
+            data = hcat(data, maximum(problem.δ.value[1:problem.n]))
+            data = hcat(data, maximum(problem.δ.value[problem.n+1:2*problem.n]))
+            data = hcat(data, maximum(problem.τ.value[1:problem.n]))
+            data = hcat(data, maximum(problem.τ.value[problem.n+1:2*problem.n]))
             if (dt != 0.0)
-                data = hcat(data, maximum(problem.δ_x.value - problem.δ_x.value_old) / dt)
-                data = hcat(data, maximum(problem.δ_y.value - problem.δ_y.value_old) / dt)
+                data = hcat(data, maximum(problem.δ.value[1:problem.n] - problem.δ.value_old[1:problem.n]) / dt)
+                data = hcat(data, maximum(problem.δ.value[problem.n+1:2*problem.n] - problem.δ.value_old[problem.n+1:2*problem.n]) / dt)
             else
                 data = hcat(data, 0.0)
                 data = hcat(data, 0.0)

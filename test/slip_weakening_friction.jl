@@ -18,8 +18,7 @@ fₚ = 0.5
 fᵣ = 0.3
 δᵣ = (fₚ - fᵣ) / μ # aw = 1
 h = 1.0e-05
-kₙ = μ / h
-kₛ = μ / h
+k = μ / h
 # Time
 t₀ = 0.0 # start time
 nₜ = 20 # number of time steps
@@ -53,7 +52,7 @@ end
         mesh = DDMesh1D(start_point, end_point, N)
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -63,7 +62,7 @@ end
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
         # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, kₙ, kₛ))
+        addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, k))
 
         # Time stepper
         time_stepper = ConstantDT(t₀, tₑ, nₜ)
@@ -91,7 +90,7 @@ end
         mesh = DDMesh1D(start_point, end_point, N)
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -101,7 +100,7 @@ end
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
         # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, kₙ, kₛ))
+        addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, k))
 
         # Time stepper
         time_stepper = ConstantDT(t₀, tₑ, nₜ)
@@ -129,7 +128,7 @@ end
         mesh = DDMesh1D(start_point, end_point, N)
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = ShearDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -139,7 +138,7 @@ end
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
         # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, kₙ, kₛ))
+        addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, k))
 
         # Time stepper
         time_stepper = ConstantDT(t₀, tₑ, nₜ)
@@ -151,6 +150,5 @@ end
         @test maximum(problem.δ.value) > 1.0 * δw
     end
 end
-
 
 end
