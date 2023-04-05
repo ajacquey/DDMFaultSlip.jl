@@ -3,10 +3,6 @@ abstract type AbstractFluidCoupling end
 struct DefaultFluidCoupling <: AbstractFluidCoupling
 end
 
-function updatePressure!(fc::DefaultFluidCoupling, X, time::T) where {T<:Real}
-    return nothing
-end
-
 mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling
     " Pressure value"
     p::Vector{T}

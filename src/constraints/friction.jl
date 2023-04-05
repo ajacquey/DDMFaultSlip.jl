@@ -98,33 +98,16 @@ function computeTractionDerivative(cst::AbstractFriction, σ::T, t_tr::SVector{2
     dΔδᵖ = computePlasticDDDerivative(cst, σ, t_tr, computeScalarPlasticDD(cst, Δδᵖ))
     return SMatrix{2}(cst.k * (1.0 - dΔδᵖ[1, 1]), -cst.k * dΔδᵖ[1, 2], -cst.k * dΔδᵖ[2, 1], cst.k * (1.0 - dΔδᵖ[2, 2]))
 end
-# function computeTraction(cst::AbstractFriction{T}, Δu::SVector{3,T}, Δuᵖ::SVector{3,T})::SVector{3,T} where {T<:Real}
-#     return SVector(cst.kₙ * (Δu[1] - Δuᵖ[1]), cst.kₛ * (Δu[2] - Δuᵖ[2]), cst.kₛ * (Δu[3] - Δuᵖ[3]))
-# end
-
-# function computeTractionDerivative(cst::AbstractFriction{T}, t_tr::SVector{3,T}, Δu::SVector{3,T}, Δuᵖ::SVector{3,T})::SMatrix{3,3,T} where {T<:Real}
-#     dΔuᵖ = computePlasticDDDerivative(cst, t_tr, computeScalarPlasticDD(cst, Δuᵖ))
-#     return SMatrix{3}(cst.kₙ * (1.0 - dΔuᵖ[1, 1]), -cst.kₙ * dΔuᵖ[2, 1], -cst.kₙ * dΔuᵖ[3, 1], -cst.kₛ * dΔuᵖ[1, 2], cst.kₛ * (1.0 - dΔuᵖ[2, 2]), -cst.kₛ * dΔuᵖ[3, 2], -cst.kₛ * dΔuᵖ[1, 3], -cst.kₛ * dΔuᵖ[2, 3], cst.kₛ * (1.0 - dΔuᵖ[3, 3]))
-# end
 
 # Default scalar traction calculations - 3D
 function computeScalarTraction(cst::AbstractFriction, t_tr::SVector{2,T})::T where {T<:Real}
     return norm(t_tr)
 end
 
-# function computeScalarTraction(cst::AbstractFriction{T}, t_tr::SVector{3,T})::Tuple{T,T} where {T<:Real}
-#     return t_tr[1], sqrt(t_tr[2]^2 + t_tr[3]^2)
-# end
-
-
 # Default scalar plastic slip increment calculations - 3D
 function computeScalarPlasticDD(cst::AbstractFriction, Δuᵖ::SVector{2,T})::T where {T<:Real}
     return norm(Δuᵖ)
 end
-
-# function computeScalarPlasticDD(cst::AbstractFriction{T}, Δuᵖ::SVector{3,T})::T where {T<:Real}
-#     return sqrt(Δuᵖ[2]^2 + Δuᵖ[3]^2)
-# end
 
 # Default scalar to vector plastic DD
 function reformPlasticDD(cst::AbstractFriction, Δp::T, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
@@ -145,16 +128,6 @@ function plasticFlowDirectionDerivative(cst::AbstractFriction, t_tr::SVector{2,T
         -cst.k / τ_tr * t_tr[1] * t_tr[2] / τ_tr^2, cst.k / τ_tr * (1.0 - (t_tr[2] / τ_tr)^2))
 end
 
-# function plasticFlowDirection(cst::AbstractFriction{T}, t_tr::SVector{3,T})::SVector{3,T} where {T<:Real}
-#     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-#     return SVector{3}(0.0, t_tr[2] / τ_tr, t_tr[3] / τ_tr)
-# end
-
-# function plasticFlowDirectionDerivative(cst::AbstractFriction{T}, t_tr::SVector{3,T})::SMatrix{3,3,T} where {T<:Real}
-#     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-#     return SMatrix{3}(0.0, 0.0, 0.0, 0.0, cst.kₛ / τ_tr * (1.0 - (t_tr[2] / τ_tr)^2), -cst.kₛ / τ_tr * t_tr[2] * t_tr[3] / τ_tr^2, 0.0, -cst.kₛ / τ_tr * t_tr[2] * t_tr[3] / τ_tr^2, cst.kₛ / τ_tr * (1.0 - (t_tr[3] / τ_tr)^2))
-# end
-
 function plasticMultiplierDerivative(cst::AbstractFriction, σ::T, τ_tr::T, Δδᵖ::T)::T where {T<:Real}
     df_dτ = yieldFunctionStressDerivative(cst, σ, τ_tr, Δδᵖ)
     df_dΔp = yieldFunctionDerivative(cst, σ, τ_tr, Δδᵖ)
@@ -167,20 +140,6 @@ function plasticMultiplierDerivative(cst::AbstractFriction, σ::T, t_tr::SVector
     df_dΔp = yieldFunctionDerivative(cst, σ, τ_tr, Δp)
     return SVector{2}(-cst.k * df_dt * t_tr[1] / τ_tr / df_dΔp, -cst.k * df_dt * t_tr[2] / τ_tr / df_dΔp)
 end
-
-# function plasticMultiplierDerivative(cst::AbstractFriction{T}, t_tr::SVector{2,T}, Δp::T)::SVector{2,T} where {T<:Real}
-#     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-#     df_dt = yieldFunctionStressDerivative(cst, σ_tr, τ_tr, Δp)
-#     df_dΔp = yieldFunctionDerivative(cst, σ_tr, τ_tr, Δp)
-#     return SVector{2}(-cst.kₙ * df_dt[1] / df_dΔp, -cst.kₛ * df_dt[2] / df_dΔp)
-# end
-
-# function plasticMultiplierDerivative(cst::AbstractFriction{T}, t_tr::SVector{3,T}, Δp::T)::SVector{3,T} where {T<:Real}
-#     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-#     df_dt = yieldFunctionStressDerivative(cst, σ_tr, τ_tr, Δp)
-#     df_dΔp = yieldFunctionDerivative(cst, σ_tr, τ_tr, Δp)
-#     return SVector{3}(-cst.kₙ * df_dt[1] / df_dΔp, -cst.kₛ * df_dt[2] * t_tr[2] / τ_tr / df_dΔp, -cst.kₛ * df_dt[2] * t_tr[3] / τ_tr / df_dΔp)
-# end
 
 function computePlasticDDDerivative(cst::AbstractFriction, σ::T, τ_tr::T, Δδᵖ::T)::T where {T<:Real}
     if (Δδᵖ > 0)
@@ -201,32 +160,6 @@ function computePlasticDDDerivative(cst::AbstractFriction, σ::T, t_tr::SVector{
         return SMatrix{2}(0.0, 0.0, 0.0, 0.0)
     end
 end
-
-# function computePlasticDDDerivative(cst::AbstractFriction{T}, t_tr::SVector{2,T}, Δp::T)::SMatrix{2,2,T} where {T<:Real}
-#     r = plasticFlowDirection(cst, t_tr)
-#     dΔp_dΔu = plasticMultiplierDerivative(cst, t_tr, Δp)
-#     dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
-
-#     if Δp > 0.0
-#         return SMatrix{2}(dΔp_dΔu[1] * r[1] + Δp * dr_dΔu[1,1], dΔp_dΔu[2] * r[1] + Δp * dr_dΔu[2,1], 
-#             dΔp_dΔu[1] * r[2] + Δp * dr_dΔu[1,2], dΔp_dΔu[2] * r[2] + Δp * dr_dΔu[2,2])
-#     else
-#         return SMatrix{2}(0.0, 0.0, 0.0, 0.0)
-#     end
-# end
-
-# function computePlasticDDDerivative(cst::AbstractFriction{T}, t_tr::SVector{3,T}, Δp::T)::SMatrix{3,3,T} where {T<:Real}
-#     r = plasticFlowDirection(cst, t_tr)
-#     dΔp_dΔu = plasticMultiplierDerivative(cst, t_tr, Δp)
-#     dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
-#     if Δp > 0.0
-#         return SMatrix{3}(dΔp_dΔu[1] * r[1] + Δp * dr_dΔu[1,1], dΔp_dΔu[2] * r[1] + Δp * dr_dΔu[2,1], dΔp_dΔu[3] * r[1] + Δp * dr_dΔu[3,1],
-#             dΔp_dΔu[1] * r[2] + Δp * dr_dΔu[1,2], dΔp_dΔu[2] * r[2] + Δp * dr_dΔu[2,2], dΔp_dΔu[3] * r[2] + Δp * dr_dΔu[3,2],
-#             dΔp_dΔu[1] * r[3] + Δp * dr_dΔu[1,3], dΔp_dΔu[2] * r[3] + Δp * dr_dΔu[2,3], dΔp_dΔu[3] * r[3] + Δp * dr_dΔu[3,3])
-#     else
-#         return SMatrix{3}(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-#     end
-# end
 
 # Default residual and jacobian (plasticity)
 function frictionResidual(cst::AbstractFriction, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
@@ -320,15 +253,6 @@ struct ConstantFriction{T<:Real} <: AbstractFriction
     end
 end
 
-# function plasticFlowDirection(cst::ConstantFriction{T}, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
-#     return SVector{2}(-cst.ζ, 1.0)
-# end
-
-# function plasticFlowDirection(cst::ConstantFriction{T}, t_tr::SVector{3,T})::SVector{3,T} where {T<:Real}
-#     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-#     return SVector{3}(-cst.ζ, t_tr[2] / τ_tr, t_tr[3] / τ_tr)
-# end
-
 function yieldFunction(cst::ConstantFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
     return (τ_tr - cst.k * Δp) - cst.f * σ
 end
@@ -397,15 +321,6 @@ function frictionSlipDerivative(cst::SlipWeakeningFriction{T}, Δp::T)::T where 
     k = 50.0 / cst.δᵣ
     return cst.w * (sigmund(k * (cst.δ_old + Δp - cst.δᵣ)) - 1.0)
 end
-
-# function plasticFlowDirection(cst::SlipWeakeningFriction{T}, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
-#     return SVector{2}(-cst.ζ, 1.0)
-# end
-
-# function plasticFlowDirection(cst::SlipWeakeningFriction{T}, t_tr::SVector{3,T})::SVector{3,T} where {T<:Real}
-#     (σ_tr, τ_tr) = computeScalarTraction(cst, t_tr)
-#     return SVector{3}(-cst.ζ, t_tr[2] / τ_tr, t_tr[3] / τ_tr)
-# end
 
 function yieldFunction(cst::SlipWeakeningFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
     f = friction(cst, Δp)
