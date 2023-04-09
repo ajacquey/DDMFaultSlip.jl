@@ -10,7 +10,6 @@ using Test
 
 # Elastic properties
 μ = 1.0
-ν = 0.25
 h = 1.0e-05
 k = μ / h
 
@@ -51,12 +50,10 @@ end
         problem = NormalDDProblem(mesh; μ=μ)
 
         # Dugdale yield
-        addCohesiveConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
-
-        outputs = [CSVDomainOutput(mesh, "outputs/test_dugdale_$(λ)")]
-
+        addCohesiveZoneConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
+        
         # Run problem
-        run!(problem; outputs=outputs, log=false)
+        run!(problem; log=false)
 
         # Analytical solution
         c_calc = get_crack_ratio(mesh.elems, problem.σ.value, λ)
@@ -80,7 +77,7 @@ end
         problem = NormalDDProblem(mesh; μ=μ)
 
         # Dugdale yield
-        addCohesiveConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
+        addCohesiveZoneConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
 
         # Run problem
         run!(problem; log=false)
@@ -107,7 +104,7 @@ end
         problem = NormalDDProblem(mesh; μ=μ)
 
         # Dugdale yield
-        addCohesiveConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
+        addCohesiveZoneConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
 
         # Run problem
         run!(problem; log=false)
@@ -123,7 +120,8 @@ end
         λ = 0.5
         # Dugdale crack ratio
         c = sqrt(1 - λ^2)
-
+        # Poisson's ratio
+        ν = 0.25
         # Create mesh
         mesh = DDMesh2D(Float64, "mesh-dugdale.msh")
 
@@ -131,42 +129,74 @@ end
         problem = NormalDDProblem(mesh; μ=μ, ν=ν)
 
         # Dugdale yield
-        addCohesiveConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
+        addCohesiveZoneConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
 
         # Run problem
         run!(problem; log=false)
 
         # Analytical solution
-        c_calc = get_crack_ratio(mesh.elems, problem.ϵ.value)
+        c_calc = get_crack_ratio(mesh.elems, problem.w.value)
 
         # Need to implement way to get c from results
         @test isapprox(c, c_calc; rtol=2.0e-02)
     end
-    @testset "3D shear: r = 0.5" begin
+    @testset "3D shear: ν = 0, r = 0.5" begin
         # Stress ratio
         λ = 0.5
         # Dugdale crack ratio
         c = sqrt(1 - λ^2)
+        # Poisson's ratio
+        ν = 0.0
 
-        function τ₀_x(X)
+        function τ₀(X)
             return λ * ones(length(X))
-        end
-
-        function τ₀_y(X)
-            return zeros(length(X))
         end
 
         # Create mesh
         mesh = DDMesh2D(Float64, "mesh-dugdale.msh")
 
         # Create problem
-        problem = ShearDDProblem3D(mesh; μ=μ, ν=ν)
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
 
         # Initial shear stress
-        addShearStressIC!(problem, SVector(τ₀_x, τ₀_y))
+        addShearStressIC!(problem, τ₀)
 
         # Dugdale yield
-        addCohesiveConstraint!(problem, DugdaleCohesiveZone(1.0, 0.0, 1.0, k))
+        addCohesiveZoneConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
+
+        # Run problem
+        run!(problem; log=false)
+
+        # Need to implement way to get c from results
+        @test true
+    end
+    @testset "3D shear: ν = 0.25, r = 0.5" begin
+        # Stress ratio
+        λ = 0.5
+        # Dugdale crack ratio
+        c = sqrt(1 - λ^2)
+        # Poisson's ratio
+        ν = 0.25
+
+        function τ₀(X, sym)
+            if (sym == :x)
+                return λ * ones(length(X))
+            else
+                return zeros(length(X))
+            end
+        end
+
+        # Create mesh
+        mesh = DDMesh2D(Float64, "mesh-dugdale.msh")
+
+        # Create problem
+        problem = ShearDDProblem(mesh; μ=μ, ν=ν)
+
+        # Initial shear stress
+        addShearStressIC!(problem, τ₀)
+
+        # Dugdale yield
+        addCohesiveZoneConstraint!(problem, DugdaleCohesiveZone(1.0 - λ, -λ, 1.0, k))
 
         # Run problem
         run!(problem; log=false)

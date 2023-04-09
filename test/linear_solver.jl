@@ -76,7 +76,7 @@ end
         addConstraint!(problem, FunctionConstraint(σ_cst))
 
         # Run problem
-        run!(problem; log=false, l_solver="bicgstabl")
+        run!(problem; log=false, l_solver="bicgstabl", pc=false)
 
         # Analytical solution
         w_sol = w_analytical_2D(mesh, μ)

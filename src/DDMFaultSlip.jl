@@ -41,12 +41,12 @@ include("fluid_coupling.jl")
 export FunctionPressure
 
 include("problem.jl")
-export NormalDDProblem, ShearDDProblem, CoupledDDProblem
+export NormalDDProblem, ShearDDProblem
 export addNormalDDIC!, addShearDDIC!, addNormalStressIC!, addShearStressIC!
 export addConstraint!
 export addFrictionConstraint!
+export addCohesiveZoneConstraint!
 export addFluidCoupling!
-export addCohesiveConstraint!
 export addOutput!
 
 include("jacobian.jl")

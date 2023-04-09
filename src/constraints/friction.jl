@@ -3,8 +3,7 @@ abstract type AbstractFriction end
 struct DefaultFriction <: AbstractFriction
 end
 
-function applyFrictionalConstraints(cst::AbstractFriction, Δδ::T, δ_old::T, σ::T, τ_old::T) where {N,T<:Real}
-    ErrorException("HERE!")
+function applyFrictionalConstraints(cst::AbstractFriction, Δδ::T, δ_old::T, σ::T, τ_old::T) where {T<:Real}
     # Plastic DD slip
     Δδᵖ = 0.0
     # Compute trial shear stress

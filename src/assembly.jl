@@ -19,10 +19,10 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
         if hasFrictionConstraint(problem)
             @timeit timer "Frictional constraints" assembleFrictionResidualAndJacobian!(solver, problem)
         end
-        # # Imposed Cohesive Zone constraints
-        # if hasCohesiveZoneConstraint(problem)
-        #     @timeit timer "Cohesive zone constraints" assembleCohesiveZoneResidualAndJacobian!(solver, problem)
-        # end
+        # Imposed Cohesive Zone constraints
+        if hasCohesiveZoneConstraint(problem)
+            @timeit timer "Cohesive zone constraints" assembleCohesiveZoneResidualAndJacobian!(solver, problem)
+        end
 
         # Reassemble HMatrix
         @timeit timer "H-matrix assembly" solver.mat = assemble_hmat(solver.K, solver.Xclt, solver.Xclt; solver.adm, solver.comp, threads=true, distributed=false)
@@ -115,36 +115,39 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Sh
     return nothing
 end
 
-# # Cohesive zone constraints
-# function assembleCohesiveZoneResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}) where {R,T<:Real}
-#     return nothing
-# end
+# Cohesive zone constraints
+function assembleCohesiveZoneResidualAndJacobian!(solver::DDSolver{R,T}, problem::NormalDDProblem{T}) where {R,T<:Real}
+    Threads.@threads for idx in eachindex(problem.mesh.elems)
+        @inbounds (Res, Jac) = applyCohesiveZoneConstraints(problem.cohesive, problem.w.value[idx] - problem.w.value_old[idx], problem.w.value_old[idx], problem.σ.value_old[idx], problem.mesh.elems[idx].X)
 
-# function assembleCohesiveZoneResidualAndJacobian!(solver::DDSolver{R,T}, problem::NormalDDProblem{T}) where {R,T<:Real}
-#     Threads.@threads for idx in eachindex(problem.mesh.elems)
-#         @inbounds (Res, Jac) = applyCohesiveZoneConstraints(problem.cohesive[1], problem.ϵ.value[idx] - problem.ϵ.value_old[idx], problem.mesh.elems[idx].X, problem.ϵ.value_old[idx], problem.σ.value_old[idx])
+        @inbounds solver.rhs[idx] -= Res
+        @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
+    end
+    return nothing
+end
 
-#         @inbounds solver.rhs[idx] -= Res
-#         @inbounds solver.mat.jac_loc[idx] -= Jac
-#     end
+function assembleCohesiveZoneResidualAndJacobian!(solver::DDSolver{R,T}, problem::ShearDDProblem{T}) where {R,T<:Real}
+    if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric 
+        Threads.@threads for idx in eachindex(problem.mesh.elems)
+            @inbounds (Res, Jac) = applyCohesiveZoneConstraints(problem.cohesive, problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value_old[idx], problem.τ.value_old[idx], problem.mesh.elems[idx].X)
+            
+            @inbounds solver.rhs[idx] -= Res
+            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac)
+        end
+    else
+        Threads.@threads for idx in eachindex(problem.mesh.elems)
+            @inbounds (Res, Jac) = applyCohesiveZoneConstraints(problem.cohesive, SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]), problem.mesh.elems[idx].X)
 
-#     return nothing
-# end
-
-# function assembleCohesiveZoneResidualAndJacobian!(solver::DDSolver{R,T}, problem::ShearDDProblem3D{T}) where {R,T<:Real}
-#     Threads.@threads for idx in eachindex(problem.mesh.elems)
-#         @inbounds (Res, Jac) = applyCohesiveZoneConstraints(problem.cohesive[1], SVector(problem.δ_x.value[idx] - problem.δ_x.value_old[idx], problem.δ_y.value[idx] - problem.δ_y.value_old[idx]), problem.mesh.elems[idx].X, SVector(problem.δ_x.value_old[idx], problem.δ_y.value_old[idx]), SVector(problem.τ_x.value_old[idx], problem.τ_y.value_old[idx]))
-
-#         @inbounds solver.rhs[idx] -= Res[1]
-#         @inbounds solver.rhs[problem.n+idx] -= Res[2]
-#         @inbounds solver.mat.jac_loc_x[1][idx] -= Jac[1, 1]
-#         @inbounds solver.mat.jac_loc_x[2][idx] -= Jac[2, 1]
-#         @inbounds solver.mat.jac_loc_y[1][idx] -= Jac[1, 2]
-#         @inbounds solver.mat.jac_loc_y[2][idx] -= Jac[2, 2]
-#     end
-
-#     return nothing
-# end
+            @inbounds solver.rhs[idx] -= Res[1]
+            @inbounds solver.rhs[problem.n+idx] -= Res[2]
+            @inbounds setLocalJacobian!(solver.mat_loc, 1, 1, idx, -Jac[1,1])
+            @inbounds setLocalJacobian!(solver.mat_loc, 1, 2, idx, -Jac[1,2])
+            @inbounds setLocalJacobian!(solver.mat_loc, 2, 1, idx, -Jac[2,1])
+            @inbounds setLocalJacobian!(solver.mat_loc, 2, 2, idx, -Jac[2,2])
+        end
+    end
+    return nothing
+end
 
 function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:Real}
     # Loop over elements

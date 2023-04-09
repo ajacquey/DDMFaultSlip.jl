@@ -31,11 +31,11 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " Frictional constraint"
     friction::AbstractFriction
 
+    " Cohesive zone"
+    cohesive::AbstractCohesiveZone
+
     " Pressure coupling"
     fluid_coupling::AbstractFluidCoupling
-
-    # " A vector of CohesiveZone"
-    # cohesive::Vector{AbstractCohesiveZone}
 
     " Constructor"
     function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
@@ -44,8 +44,8 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
             AuxVariable(T, :σ, length(mesh.elems)),
             DefaultConstraint(),
             DefaultFriction(),
+            DefaultCohesiveZone(),
             DefaultFluidCoupling(),
-            # Vector{AbstractCohesiveZone}(undef, 0),
         )
     end
 end
@@ -84,6 +84,9 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     " Frictional constraint"
     friction::AbstractFriction
 
+    " Cohesive zone"
+    cohesive::AbstractCohesiveZone
+
     " Pressure coupling"
     fluid_coupling::AbstractFluidCoupling
 
@@ -96,6 +99,7 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                 AuxVariable(T, :τ, length(mesh.elems)),
                 [DefaultConstraint()],
                 DefaultFriction(),
+                DefaultCohesiveZone(),
                 DefaultFluidCoupling(),
             )
         else
@@ -106,6 +110,7 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                     AuxVariable(T, :τ, length(mesh.elems)),
                     [DefaultConstraint()],
                     DefaultFriction(),
+                    DefaultCohesiveZone(),
                     DefaultFluidCoupling(),
                 )
             else
@@ -115,20 +120,13 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                     AuxVariable(T, :τ, 2*length(mesh.elems)),
                     [DefaultConstraint(), DefaultConstraint()],
                     DefaultFriction(),
+                    DefaultCohesiveZone(),
                     DefaultFluidCoupling(),
                 )
             end
         end
     end
 end
-
-# function hasNormalDD(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-#     return hasproperty(problem, :w)
-# end
-
-# function hasShearDD(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-#     return hasproperty(problem, :δ)
-# end
 
 function addNormalDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
     if hasproperty(problem, :w)
@@ -251,6 +249,22 @@ function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::Abstrac
 
     # Add FrictionConstraint
     problem.friction = friction
+
+    return nothing
+end
+
+function hasCohesiveZoneConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return ~isa(problem.cohesive, DefaultCohesiveZone)
+end
+
+function addCohesiveZoneConstraint!(problem::AbstractDDProblem{T}, cohesive::AbstractCohesiveZone) where {T<:Real}
+    # Check if problem has cohesive
+    if (hasCohesiveZoneConstraint(problem))
+        throw(ErrorException("The problem already has a CohesiveZoneConstraint!"))
+    end
+
+    # Add CohesiveZoneConstraint
+    problem.cohesive = cohesive
 
     return nothing
 end
