@@ -1,6 +1,9 @@
-abstract type AbstractFluidCoupling{T<:Real} end
+abstract type AbstractFluidCoupling end
 
-mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling{T}
+struct DefaultFluidCoupling <: AbstractFluidCoupling
+end
+
+mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling
     " Pressure value"
     p::Vector{T}
 

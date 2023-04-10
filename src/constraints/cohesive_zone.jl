@@ -1,7 +1,10 @@
-abstract type AbstractCohesiveZone{T<:Real} end
+abstract type AbstractCohesiveZone end
+
+struct DefaultCohesiveZone <: AbstractCohesiveZone
+end
 
 # For NormalDDProblem
-function applyCohesiveZoneConstraints(cst::AbstractCohesiveZone{T}, Δu::T, X::SVector{N,T}, u_old::T, σ_old::T) where {N,T<:Real}
+function applyCohesiveZoneConstraints(cst::AbstractCohesiveZone, Δu::T, u_old::T, σ_old::T, X::SVector{N,T}) where {N,T<:Real}
     # Plastic DD increment
     Δp = 0.0
     # Compute trial normal stress
@@ -25,7 +28,7 @@ function applyCohesiveZoneConstraints(cst::AbstractCohesiveZone{T}, Δu::T, X::S
 end
 
 # For ShearDDProblem3D
-function applyCohesiveZoneConstraints(cst::AbstractCohesiveZone{T}, Δu::SVector{2,T}, X::SVector{3,T}, u_old::SVector{2,T}, t_old::SVector{2,T}) where {T<:Real}
+function applyCohesiveZoneConstraints(cst::AbstractCohesiveZone, Δu::SVector{2,T}, u_old::SVector{2,T}, t_old::SVector{2,T}, X::SVector{3,T}) where {T<:Real}
     # Plastic DD increment
     Δuᵖ = @SVector zeros(T, 2)
     # Compute trial shear tractions
@@ -52,7 +55,7 @@ function applyCohesiveZoneConstraints(cst::AbstractCohesiveZone{T}, Δu::SVector
     end
 end
 
-function returnMap(cst::AbstractCohesiveZone{T}, σ_tr::T, X::SVector{N,T})::T where {N,T<:Real}
+function returnMap(cst::AbstractCohesiveZone, σ_tr::T, X::SVector{N,T})::T where {N,T<:Real}
     # Initialized scalar plastic DD
     Δp = 0.0
 
@@ -78,54 +81,54 @@ function returnMap(cst::AbstractCohesiveZone{T}, σ_tr::T, X::SVector{N,T})::T w
 end
 
 # Default traction calculations - 2D
-function computeTraction(cst::AbstractCohesiveZone{T}, Δu::T, Δp::T)::T where {T<:Real}
+function computeTraction(cst::AbstractCohesiveZone, Δu::T, Δp::T)::T where {T<:Real}
     return cst.k * (Δu - Δp)
 end
 
-function computeTractionDerivative(cst::AbstractCohesiveZone{T}, σ_tr::T, Δu::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
+function computeTractionDerivative(cst::AbstractCohesiveZone, σ_tr::T, Δu::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
     dΔp = computePlasticDDDerivative(cst, σ_tr, Δp, X)
     return cst.k * (1.0 - dΔp)
 end
 
 # Default traction calculations - 3D
-function computeTraction(cst::AbstractCohesiveZone{T}, Δu::SVector{2,T}, Δuᵖ::SVector{2,T})::SVector{2,T} where {T<:Real}
+function computeTraction(cst::AbstractCohesiveZone, Δu::SVector{2,T}, Δuᵖ::SVector{2,T})::SVector{2,T} where {T<:Real}
     return cst.k * (Δu - Δuᵖ)
 end
 
-function computeTractionDerivative(cst::AbstractCohesiveZone{T}, t_tr::SVector{2,T}, Δu::SVector{2,T}, Δuᵖ::SVector{2,T}, X::SVector{3,T})::SMatrix{2,2,T} where {T<:Real}
+function computeTractionDerivative(cst::AbstractCohesiveZone, t_tr::SVector{2,T}, Δu::SVector{2,T}, Δuᵖ::SVector{2,T}, X::SVector{3,T})::SMatrix{2,2,T} where {T<:Real}
     dΔuᵖ = computePlasticDDDerivative(cst, t_tr, computeScalarPlasticDD(cst, Δuᵖ), X)
     return SMatrix{2}(cst.k * (1.0 - dΔuᵖ[1, 1]), -cst.k * dΔuᵖ[2, 1], -cst.k * dΔuᵖ[1, 2], cst.k * (1.0 - dΔuᵖ[2, 2]))
 end
 
 # Default scalar traction calculations - 3D
-function computeScalarTraction(cst::AbstractCohesiveZone{T}, t_tr::SVector{2,T})::T where {T<:Real}
+function computeScalarTraction(cst::AbstractCohesiveZone, t_tr::SVector{2,T})::T where {T<:Real}
     return norm(t_tr)
 end
 
 # Default scalar plastic slip increment calculations - 3D
-function computeScalarPlasticDD(cst::AbstractCohesiveZone{T}, Δuᵖ::SVector{2,T})::T where {T<:Real}
+function computeScalarPlasticDD(cst::AbstractCohesiveZone, Δuᵖ::SVector{2,T})::T where {T<:Real}
     return norm(Δuᵖ)
 end
 
 # Default scalar to vector plastic DD - 3D
-function reformPlasticDD(cst::AbstractCohesiveZone{T}, Δp::T, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
+function reformPlasticDD(cst::AbstractCohesiveZone, Δp::T, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
     τ_tr = computeScalarTraction(cst, t_tr)
     return Δp * t_tr / τ_tr
 end
 
 # Default plastic flow direction - 3D
-function plasticFlowDirection(cst::AbstractCohesiveZone{T}, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
+function plasticFlowDirection(cst::AbstractCohesiveZone, t_tr::SVector{2,T})::SVector{2,T} where {T<:Real}
     τ_tr = computeScalarTraction(cst, t_tr)
     return t_tr / τ_tr
 end
 
-function plasticFlowDirectionDerivative(cst::AbstractCohesiveZone{T}, t_tr::SVector{2,T})::SMatrix{2,2,T} where {T<:Real}
+function plasticFlowDirectionDerivative(cst::AbstractCohesiveZone, t_tr::SVector{2,T})::SMatrix{2,2,T} where {T<:Real}
     τ_tr = computeScalarTraction(cst, t_tr)
     return SMatrix{2}(cst.k / τ_tr * (1.0 - (t_tr[1] / τ_tr)^2), -cst.k / τ_tr * t_tr[1] * t_tr[2] / τ_tr^2, -cst.k / τ_tr * t_tr[1] * t_tr[2] / τ_tr^2, cst.k / τ_tr * (1.0 - (t_tr[2] / τ_tr)^2))
 end
 
 # Jacobian NormalDDProblem - 2D
-function computePlasticDDDerivative(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
+function computePlasticDDDerivative(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
     dΔp_dΔu = plasticMultiplierDerivative(cst, σ_tr, Δp, X)
 
     if Δp > 0.0
@@ -135,14 +138,14 @@ function computePlasticDDDerivative(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp:
     end
 end
 
-function plasticMultiplierDerivative(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
+function plasticMultiplierDerivative(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
     df_dσ = yieldFunctionStressDerivative(cst, σ_tr, Δp, X)
     df_dΔp = yieldFunctionDerivative(cst, σ_tr, Δp, X)
     return -cst.k * df_dσ / df_dΔp
 end
 
 # Jacobian - 3D
-function computePlasticDDDerivative(cst::AbstractCohesiveZone{T}, t_tr::SVector{2,T}, Δp::T, X::SVector{3,T})::SMatrix{2,2,T} where {T<:Real}
+function computePlasticDDDerivative(cst::AbstractCohesiveZone, t_tr::SVector{2,T}, Δp::T, X::SVector{3,T})::SMatrix{2,2,T} where {T<:Real}
     r = plasticFlowDirection(cst, t_tr)
     dΔp_dΔu = plasticMultiplierDerivative(cst, t_tr, Δp, X)
     dr_dΔu = plasticFlowDirectionDerivative(cst, t_tr)
@@ -154,7 +157,7 @@ function computePlasticDDDerivative(cst::AbstractCohesiveZone{T}, t_tr::SVector{
     end
 end
 
-function plasticMultiplierDerivative(cst::AbstractCohesiveZone{T}, t_tr::SVector{2,T}, Δp::T, X::SVector{3,T})::SVector{2,T} where {T<:Real}
+function plasticMultiplierDerivative(cst::AbstractCohesiveZone, t_tr::SVector{2,T}, Δp::T, X::SVector{3,T})::SVector{2,T} where {T<:Real}
     τ_tr = computeScalarTraction(cst, t_tr)
     df_dt = yieldFunctionStressDerivative(cst, τ_tr, Δp, X)
     df_dΔp = yieldFunctionDerivative(cst, τ_tr, Δp, X)
@@ -162,41 +165,41 @@ function plasticMultiplierDerivative(cst::AbstractCohesiveZone{T}, t_tr::SVector
 end
 
 # Default residual and jacobian (plasticity)
-function cohesiveZoneResidual(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
+function cohesiveZoneResidual(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
     return yieldFunction(cst, σ_tr, Δp, X)
 end
 
-function cohesiveZoneJacobian(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
+function cohesiveZoneJacobian(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T})::T where {N,T<:Real}
     return yieldFunctionDerivative(cst, σ_tr, Δp, X)
 end
 
 # To replace in children classes
-function yieldFunction(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T}) where {N,T<:Real}
+function yieldFunction(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T}) where {N,T<:Real}
     throw(MethodError(yieldFunction, cst))
 end
 
-function yieldFunctionDerivative(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T}) where {N,T<:Real}
+function yieldFunctionDerivative(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T}) where {N,T<:Real}
     throw(MethodError(yieldFunctionDerivative, cst))
 end
 
-function yieldFunctionStressDerivative(cst::AbstractCohesiveZone{T}, σ_tr::T, Δp::T, X::SVector{N,T}) where {N,T<:Real}
+function yieldFunctionStressDerivative(cst::AbstractCohesiveZone, σ_tr::T, Δp::T, X::SVector{N,T}) where {N,T<:Real}
     throw(MethodError(yieldFunctionStressDerivative, cst))
 end
 
-function preReturnMap(cst::AbstractCohesiveZone{T}, u_old::T, Δu::T) where {T<:Real}
+function preReturnMap(cst::AbstractCohesiveZone, u_old::T, Δu::T) where {T<:Real}
     return nothing
 end
 
-function preReturnMap(cst::AbstractCohesiveZone{T}, u_old::SVector{2,T}, Δu::SVector{2,T}) where {T<:Real}
+function preReturnMap(cst::AbstractCohesiveZone, u_old::SVector{2,T}, Δu::SVector{2,T}) where {T<:Real}
     return nothing
 end
 
-function postReturnMap(cst::AbstractCohesiveZone{T}, Δp::T) where {T<:Real}
+function postReturnMap(cst::AbstractCohesiveZone, Δp::T) where {T<:Real}
     return nothing
 end
 
 # Dugdale cohesive zone model
-struct DugdaleCohesiveZone{T<:Real} <: AbstractCohesiveZone{T}
+struct DugdaleCohesiveZone{T<:Real} <: AbstractCohesiveZone
     " Peak stress"
     σₚ::T
 

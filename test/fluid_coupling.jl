@@ -14,7 +14,7 @@ using Test
 μ = 6.6667e+02
 # Friction properties
 τₛ = 10.0
-h = 1.0e-03
+h = 1.0e-05
 kₙ = μ / h
 kₛ = μ / h
 
@@ -30,12 +30,20 @@ function p_func_3D(X::Vector{SVector{3,T}}, time::T)::Vector{T} where {T<:Real}
     return Δpᵢ * expint.(1, [norm(X[idx])^2 for idx in eachindex(X)] / (α * time))
 end
 
-function DD_analytical_2D(mesh::DDMesh1D{T}, time::T)::Vector{T} where {T<:Real}
+function w_analytical_2D(mesh::DDMesh1D{T}, time::T)::Vector{T} where {T<:Real}
     return -p_func_2D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
-function DD_analytical_3D(mesh::DDMesh2D{T}, time::T)::Vector{T} where {T<:Real}
+function w_analytical_3D(mesh::DDMesh2D{T}, time::T)::Vector{T} where {T<:Real}
     return -p_func_3D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
+end
+
+function Δσ(X::SVector{N,T}, Δw::T) where {N,T<:Real}
+    return kₙ * Δw
+end
+
+function dΔσ(X::SVector{N,T}, Δw::T) where {N,T<:Real}
+    return kₙ
 end
 
 @testset "Fluid coupling problems" begin
@@ -50,7 +58,7 @@ end
         μ = 1.0
 
         # Create problem
-        problem = CoupledDDProblem2D(mesh; μ=μ)
+        problem = NormalDDProblem(mesh; μ=μ)
 
         # Add IC
         addNormalStressIC!(problem, σ₀)
@@ -58,21 +66,21 @@ end
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_2D))
 
-        # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantYield(τₛ, kₙ, kₛ))
+        # Elastic opening
+        addConstraint!(problem, FunctionConstraint(Δσ, dΔσ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop=10.0, length=20))
+        time_seq = collect(range(0.0, stop=10.0, length=21))
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
 
         # Run problem
         run!(problem, time_stepper; log=false)
 
         # Analytical solutions
-        DD_sol = DD_analytical_2D(mesh, μ)
+        w_sol = w_analytical_2D(mesh, time_seq[end])
 
         # Error less than 4%
-        @test isapprox(problem.ϵ.value, DD_sol; atol=4.0e-02)
+        @test isapprox(problem.w.value, w_sol; atol=4.0e-02)
     end
     @testset "Fluid-induced opening - 3D" begin
         # Create mesh
@@ -83,7 +91,7 @@ end
         ν = 0.0
 
         # Create problem
-        problem = CoupledDDProblem3D(mesh; μ=μ, ν=ν)
+        problem = NormalDDProblem(mesh; μ=μ, ν=ν)
 
         # ICs
         addNormalStressIC!(problem, σ₀)
@@ -91,21 +99,21 @@ end
         # Fluid coupling
         addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
 
-        # Constant yield (dummy plastic model)
-        addFrictionConstraint!(problem, ConstantYield(τₛ, kₙ, kₛ))
+        # Elastic opening
+        addConstraint!(problem, FunctionConstraint(Δσ, dΔσ))
 
         # Time sequence
-        time_seq = collect(range(0.5, stop=10.0, length=20))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
+        time_seq = collect(range(0.0, stop=1.0, length=11))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0)
 
         # Run problem
         run!(problem, time_stepper; log=false)
 
         # Analytical solutions
-        DD_sol = DD_analytical_3D(mesh, μ)
+        w_sol = w_analytical_3D(mesh, time_seq[end])
 
         # Error less than 4%
-        @test isapprox(problem.ϵ.value, DD_sol; atol=4.0e-02)
+        @test isapprox(problem.w.value, w_sol; atol=4.0e-02)
     end
 end
 

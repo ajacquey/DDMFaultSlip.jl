@@ -20,38 +20,45 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     transient::Bool
 
     " The normal DD variable"
-    ϵ::Variable{T}
+    w::Variable{T}
 
-    " The normal DD stress"
+    " The normal stress"
     σ::AuxVariable{T}
 
-    " A vector of Constraints"
-    constraints_ϵ::Vector{AbstractConstraint}
+    " Constraints"
+    constraints::AbstractConstraint
 
-    " A vector of PressureCoupling"
-    fluid_coupling::Vector{AbstractFluidCoupling}
+    " Frictional constraint"
+    friction::AbstractFriction
 
-    " A vector of CohesiveZone"
-    cohesive::Vector{AbstractCohesiveZone}
+    " Cohesive zone"
+    cohesive::AbstractCohesiveZone
+
+    " Pressure coupling"
+    fluid_coupling::AbstractFluidCoupling
 
     " Constructor"
     function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
         return new{T}(mesh, μ, ν, length(mesh.elems), length(mesh.elems), transient,
-            Variable(T, :ϵ, length(mesh.elems)),
+            Variable(T, :w, length(mesh.elems)),
             AuxVariable(T, :σ, length(mesh.elems)),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractFluidCoupling}(undef, 0),
-            Vector{AbstractCohesiveZone}(undef, 0),
+            DefaultConstraint(),
+            DefaultFriction(),
+            DefaultCohesiveZone(),
+            DefaultFluidCoupling(),
         )
     end
 end
 
-mutable struct ShearDDProblem2D{T<:Real} <: AbstractDDProblem{T}
+mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     " The mesh for the problem"
-    mesh::DDMesh1D{T}
+    mesh::DDMesh{T}
 
     " The elastic shear modulus"
     μ::Float64
+
+    " The Poisson's ratio"
+    ν::Float64
 
     " The number of elements"
     n::Int
@@ -65,196 +72,65 @@ mutable struct ShearDDProblem2D{T<:Real} <: AbstractDDProblem{T}
     " The shear DD variables"
     δ::Variable{T}
 
-    " The shear DD stress"
+    " The normal stress"
+    σ::AuxVariable{T}
+
+    " The shear stress"
     τ::AuxVariable{T}
 
     " A vector of Constraints"
-    constraints_δ::Vector{AbstractConstraint}
+    constraints::Vector{AbstractConstraint}
+
+    " Frictional constraint"
+    friction::AbstractFriction
+
+    " Cohesive zone"
+    cohesive::AbstractCohesiveZone
+
+    " Pressure coupling"
+    fluid_coupling::AbstractFluidCoupling
 
     " Constructor"
-    function ShearDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, length(mesh.elems), length(mesh.elems), transient,
-            Variable(T, :δ, length(mesh.elems)),
-            AuxVariable(T, :τ, length(mesh.elems)),
-            Vector{AbstractConstraint}(undef, 0),
-        )
+    function ShearDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
+        if isa(mesh, DDMesh1D)
+            return new{T}(mesh, μ, ν,  length(mesh.elems), length(mesh.elems), transient,
+                Variable(T, :δ, length(mesh.elems)),
+                AuxVariable(T, :σ, length(mesh.elems)),
+                AuxVariable(T, :τ, length(mesh.elems)),
+                [DefaultConstraint()],
+                DefaultFriction(),
+                DefaultCohesiveZone(),
+                DefaultFluidCoupling(),
+            )
+        else
+            if (ν == 0.0)
+                return new{T}(mesh, μ, ν,  length(mesh.elems), length(mesh.elems), transient,
+                    Variable(T, :δ, length(mesh.elems)),
+                    AuxVariable(T, :σ, length(mesh.elems)),
+                    AuxVariable(T, :τ, length(mesh.elems)),
+                    [DefaultConstraint()],
+                    DefaultFriction(),
+                    DefaultCohesiveZone(),
+                    DefaultFluidCoupling(),
+                )
+            else
+                return new{T}(mesh, μ, ν,  length(mesh.elems), 2*length(mesh.elems), transient,
+                    Variable(T, :δ, 2*length(mesh.elems)),
+                    AuxVariable(T, :σ, length(mesh.elems)),
+                    AuxVariable(T, :τ, 2*length(mesh.elems)),
+                    [DefaultConstraint(), DefaultConstraint()],
+                    DefaultFriction(),
+                    DefaultCohesiveZone(),
+                    DefaultFluidCoupling(),
+                )
+            end
+        end
     end
-end
-
-mutable struct ShearDDProblem3D{T<:Real} <: AbstractDDProblem{T}
-    " The mesh for the problem"
-    mesh::DDMesh2D{T}
-
-    " The elastic shear modulus"
-    μ::Float64
-
-    " The Poisson's ratio"
-    ν::Float64
-
-    " The number of elements"
-    n::Int
-
-    " The number of degrees of freedom"
-    n_dof::Int
-
-    " A boolean to specify if the problem is transient"
-    transient::Bool
-
-    " The shear DD variables"
-    δ_x::Variable{T}
-    δ_y::Variable{T}
-
-    " The shear DD stress variables"
-    τ_x::AuxVariable{T}
-    τ_y::AuxVariable{T}
-
-    " A vector of vector of Constraints"
-    constraints_δx::Vector{AbstractConstraint}
-    constraints_δy::Vector{AbstractConstraint}
-
-    " A vector of CohesiveZone"
-    cohesive::Vector{AbstractCohesiveZone}
-
-    " Constructor"
-    function ShearDDProblem3D(mesh::DDMesh2D{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, length(mesh.elems), 2 * length(mesh.elems), transient,
-            Variable(T, :δ_x, length(mesh.elems)),
-            Variable(T, :δ_y, length(mesh.elems)),
-            AuxVariable(T, :τ_x, length(mesh.elems)),
-            AuxVariable(T, :τ_y, length(mesh.elems)),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractCohesiveZone}(undef, 0),
-        )
-    end
-end
-
-mutable struct CoupledDDProblem2D{T<:Real} <: AbstractDDProblem{T}
-    " The mesh for the problem"
-    mesh::DDMesh1D{T}
-
-    " The elastic shear modulus"
-    μ::Float64
-
-    " The number of elements"
-    n::Int
-
-    " The number of degrees of freedom"
-    n_dof::Int
-
-    " A boolean to specify if the problem is transient"
-    transient::Bool
-
-    " The normal DD variable"
-    ϵ::Variable{T}
-
-    " The shear DD variables"
-    δ::Variable{T}
-
-    " The normal DD stress"
-    σ::AuxVariable{T}
-
-    " The shear DD stress"
-    τ::AuxVariable{T}
-
-    " Constraints"
-    constraints_ϵ::Vector{AbstractConstraint}
-    constraints_δ::Vector{AbstractConstraint}
-    friction::Vector{AbstractFriction}
-
-    " A vector of PressureCoupling"
-    fluid_coupling::Vector{AbstractFluidCoupling}
-
-    " Constructor"
-    function CoupledDDProblem2D(mesh::DDMesh1D{T}; transient::Bool=false, μ::T=1.0) where {T<:Real}
-        return new{T}(mesh, μ, length(mesh.elems), 2 * length(mesh.elems), transient,
-            Variable(T, :ϵ, length(mesh.elems)),
-            Variable(T, :δ, length(mesh.elems)),
-            AuxVariable(T, :σ, length(mesh.elems)),
-            AuxVariable(T, :τ, length(mesh.elems)),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractFriction}(undef, 0),
-            Vector{AbstractFluidCoupling}(undef, 0),
-        )
-    end
-end
-
-mutable struct CoupledDDProblem3D{T<:Real} <: AbstractDDProblem{T}
-    " The mesh for the problem"
-    mesh::DDMesh2D{T}
-
-    " The elastic shear modulus"
-    μ::Float64
-
-    " The Poisson's ratio"
-    ν::Float64
-
-    " The number of elements"
-    n::Int
-
-    " The number of degrees of freedom"
-    n_dof::Int
-
-    " A boolean to specify if the problem is transient"
-    transient::Bool
-
-    " The normal DD variable"
-    ϵ::Variable{T}
-
-    " The shear DD variables"
-    δ_x::Variable{T}
-    δ_y::Variable{T}
-
-    " The normal DD stress"
-    σ::AuxVariable{T}
-
-    " The shear DD stress variables"
-    τ_x::AuxVariable{T}
-    τ_y::AuxVariable{T}
-
-    " Constraints"
-    constraints_ϵ::Vector{AbstractConstraint}
-    constraints_δx::Vector{AbstractConstraint}
-    constraints_δy::Vector{AbstractConstraint}
-    friction::Vector{AbstractFriction}
-
-    " A vector of PressureCoupling"
-    fluid_coupling::Vector{AbstractFluidCoupling}
-
-    " Constructor"
-    function CoupledDDProblem3D(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, length(mesh.elems), 3 * length(mesh.elems), transient,
-            Variable(T, :ϵ, length(mesh.elems)),
-            Variable(T, :δ_x, length(mesh.elems)),
-            Variable(T, :δ_y, length(mesh.elems)),
-            AuxVariable(T, :σ, length(mesh.elems)),
-            AuxVariable(T, :τ_x, length(mesh.elems)),
-            AuxVariable(T, :τ_y, length(mesh.elems)),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractConstraint}(undef, 0),
-            Vector{AbstractFriction}(undef, 0),
-            Vector{AbstractFluidCoupling}(undef, 0),
-        )
-    end
-end
-
-function hasNormalDD(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    return (isa(problem, NormalDDProblem) || isa(problem, CoupledDDProblem2D) || isa(problem, CoupledDDProblem3D))
-end
-
-function hasShearDD2D(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    return (isa(problem, ShearDDProblem2D) || isa(problem, CoupledDDProblem2D))
-end
-
-function hasShearDD3D(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    return (isa(problem, ShearDDProblem3D) || isa(problem, CoupledDDProblem3D))
 end
 
 function addNormalDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
-    if hasNormalDD(problem)
-        problem.ϵ.func_ic = func_ic
+    if hasproperty(problem, :w)
+        problem.w.func_ic = func_ic
     else
         throw(ErrorException("This problem doesn't have a normal DD!"))
     end
@@ -262,7 +138,7 @@ function addNormalDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where 
 end
 
 function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
-    if hasShearDD2D(problem)
+    if hasproperty(problem, :δ)
         problem.δ.func_ic = func_ic
     else
         throw(ErrorException("This problem doesn't have a shear DD!"))
@@ -270,18 +146,8 @@ function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {
     return nothing
 end
 
-function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::SVector{2,Function}) where {T<:Real}
-    if hasShearDD3D(problem)
-        problem.δ_x.func_ic = func_ic[1]
-        problem.δ_y.func_ic = func_ic[2]
-    else
-        throw(ErrorException("This problem doesn't have a shear DD!"))
-    end
-    return nothing
-end
-
 function addNormalStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
-    if hasNormalDD(problem)
+    if hasproperty(problem, :σ)
         problem.σ.func_ic = func_ic
     else
         throw(ErrorException("This problem doesn't have a normal stress!"))
@@ -290,7 +156,7 @@ function addNormalStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) wh
 end
 
 function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
-    if hasShearDD2D(problem)
+    if hasproperty(problem, :τ)
         problem.τ.func_ic = func_ic
     else
         throw(ErrorException("This problem doesn't have a shear shear!"))
@@ -298,209 +164,145 @@ function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) whe
     return nothing
 end
 
-function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::SVector{2,Function}) where {T<:Real}
-    if hasShearDD3D(problem)
-        problem.τ_x.func_ic = func_ic[1]
-        problem.τ_y.func_ic = func_ic[2]
-    else
-        throw(ErrorException("This problem doesn't have a shear stress!"))
-    end
-    return nothing
-end
-
 function applyNormalDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
-    problem.ϵ.value = problem.ϵ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
-    problem.ϵ.value_old = copy(problem.ϵ.value)
+    problem.w.value = problem.w.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
+    problem.w.value_old = copy(problem.w.value)
     problem.σ.value = problem.σ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
     problem.σ.value_old = copy(problem.σ.value)
     return nothing
 end
 
 function applyShearDDIC!(problem::AbstractDDProblem{T}) where {T<:Real}
-    if (isa(problem, ShearDDProblem2D) || isa(problem, CoupledDDProblem2D))
+    if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric 
         problem.δ.value = problem.δ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.δ.value_old = copy(problem.δ.value)
         problem.τ.value = problem.τ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         problem.τ.value_old = copy(problem.τ.value)
-    elseif (isa(problem, ShearDDProblem3D) || isa(problem, CoupledDDProblem3D))
-        problem.δ_x.value = problem.δ_x.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
-        problem.δ_x.value_old = copy(problem.δ_x.value)
-        problem.τ_x.value = problem.τ_x.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
-        problem.τ_x.value_old = copy(problem.τ_x.value)
-        problem.δ_y.value = problem.δ_y.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
-        problem.δ_y.value_old = copy(problem.δ_y.value)
-        problem.τ_y.value = problem.τ_y.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
-        problem.τ_y.value_old = copy(problem.τ_y.value)
     else
-        throw(ErrorException("No shear IC in this problem!"))
+        problem.δ.value[1:problem.n] = problem.δ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], :x)
+        problem.δ.value_old[1:problem.n] = copy(problem.δ.value[1:problem.n])
+        problem.δ.value[problem.n+1:2*problem.n] = problem.δ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], :y)
+        problem.δ.value_old[problem.n+1:2*problem.n] = copy(problem.δ.value[problem.n+1:2*problem.n])
+        problem.τ.value[1:problem.n] = problem.τ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], :x)
+        problem.τ.value_old[1:problem.n] = copy(problem.τ.value[1:problem.n])
+        problem.τ.value[problem.n+1:2*problem.n] = problem.τ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)], :y)
+        problem.τ.value_old[problem.n+1:2*problem.n] = copy(problem.τ.value[problem.n+1:2*problem.n])
     end
+    problem.σ.value = problem.σ.func_ic([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
+    problem.σ.value_old = copy(problem.σ.value)
     return nothing
 end
 
 function applyIC!(problem::AbstractDDProblem{T}) where {T<:Real}
     if isa(problem, NormalDDProblem)
         applyNormalDDIC!(problem)
-    elseif isa(problem, ShearDDProblem2D) || isa(problem, ShearDDProblem3D)
-        applyShearDDIC!(problem)
-    else # Coupled problems
-        applyNormalDDIC!(problem)
+    elseif isa(problem, ShearDDProblem)
         applyShearDDIC!(problem)
     end
     return nothing
 end
 
 function hasConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    if hasproperty(problem, :constraints_ϵ)
-        if ~isempty(problem.constraints_ϵ)
-            return true
-        end
+    if isa(problem.constraints, Vector)
+        return ~all(x->isa(x, DefaultConstraint), problem.constraints)
+    else
+        return ~isa(problem.constraints, DefaultConstraint)
     end
-    if hasproperty(problem, :constraints_δ)
-        if ~isempty(problem.constraints_δ)
-            return true
-        end
-    end
-    if hasproperty(problem, :constraints_δx)
-        if ~isempty(problem.constraints_δx)
-            return true
-        end
-    end
-    if hasproperty(problem, :constraints_δy)
-        if ~isempty(problem.constraints_δy)
-            return true
-        end
-    end
-
-    return false
 end
 
 function addConstraint!(problem::NormalDDProblem{T}, cst::AbstractConstraint) where {T<:Real}
-    push!(problem.constraints_ϵ, cst)
+    problem.constraints = cst
     return nothing
 end
 
-function addConstraint!(problem::ShearDDProblem2D{T}, cst::AbstractConstraint) where {T<:Real}
-    push!(problem.constraints_δ, cst)
+function addConstraint!(problem::ShearDDProblem{T}, cst::AbstractConstraint) where {T<:Real}
+    if (problem.n_dof > problem.n) # 2D shear
+        throw(ErrorException("For 3D problem, please specify direction as a symbol: :x or :y."))
+    end
+    problem.constraints[1] = cst
     return nothing
 end
 
-function addConstraint!(problem::ShearDDProblem3D{T}, sym::Symbol, cst::AbstractConstraint) where {T<:Real}
+function addConstraint!(problem::ShearDDProblem{T}, cst::AbstractConstraint, sym::Symbol) where {T<:Real}
+    if isa(problem.mesh, DDMesh1D)
+        throw(ErrorException("For 2D problem, you don't need to specify the direction!"))
+    end
     if (sym == :x)
-        push!(problem.constraints_δx, cst)
+        problem.constraints[1] =  cst
     elseif (sym == :y)
-        push!(problem.constraints_δy, cst)
+        problem.constraints[2] =  cst
     else
-        throw(ErrorException("No dimension noted $(sym)!"))
-    end
-    return nothing
-end
-
-function addConstraint!(problem::CoupledDDProblem2D{T}, sym::Symbol, cst::AbstractConstraint) where {T<:Real}
-    if (sym == :ϵ)
-        push!(problem.constraints_ϵ, cst)
-    elseif (sym == :δ)
-        push!(problem.constraints_δ, cst)
-    else
-        throw(ErrorException("No dimension noted $(sym)!"))
-    end
-    return nothing
-end
-
-function addConstraint!(problem::CoupledDDProblem3D{T}, sym::Symbol, cst::AbstractConstraint) where {T<:Real}
-    if (sym == :ϵ)
-        push!(problem.constraints_ϵ, cst)
-    elseif (sym == :δ_x)
-        push!(problem.constraints_δx, cst)
-    elseif (sym == :δ_y)
-        push!(problem.constraints_δy, cst)
-    else
-        throw(ErrorException("No dimension noted $(sym)!"))
+        throw(ErrorException("No dimension noted $(sym)! Possible dimensions are ':x', or ':y'"))
     end
     return nothing
 end
 
 function hasFrictionConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    if hasproperty(problem, :friction)
-        return ~isempty(problem.friction)
-    else
-        return false
-    end
+    return ~isa(problem.friction, DefaultFriction)
 end
 
-function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::AbstractFriction{T}) where {T<:Real}
+function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::AbstractFriction) where {T<:Real}
     # Check if problem has friction
     if (hasFrictionConstraint(problem))
         throw(ErrorException("The problem already has a FrictionConstraint!"))
     end
 
     # Add FrictionConstraint
-    push!(problem.friction, friction)
+    problem.friction = friction
+
+    return nothing
+end
+
+function hasCohesiveZoneConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
+    return ~isa(problem.cohesive, DefaultCohesiveZone)
+end
+
+function addCohesiveZoneConstraint!(problem::AbstractDDProblem{T}, cohesive::AbstractCohesiveZone) where {T<:Real}
+    # Check if problem has cohesive
+    if (hasCohesiveZoneConstraint(problem))
+        throw(ErrorException("The problem already has a CohesiveZoneConstraint!"))
+    end
+
+    # Add CohesiveZoneConstraint
+    problem.cohesive = cohesive
 
     return nothing
 end
 
 function hasFluidCoupling(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    if hasproperty(problem, :fluid_coupling)
-        return ~isempty(problem.fluid_coupling)
-    else
-        return false
-    end
+    return ~isa(problem.fluid_coupling, DefaultFluidCoupling)
 end
 
-function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupling{T}) where {T<:Real}
+function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupling) where {T<:Real}
     # Check if FluidCoupling is not empty
     if (hasFluidCoupling(problem))
         throw(ErrorException("The problem already has a FluidCoupling!"))
     end
 
     # Add FluidCoupling
-    push!(problem.fluid_coupling, pp)
-
-    return nothing
-end
-
-function hasCohesiveZoneConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
-    if hasproperty(problem, :cohesive)
-        return ~isempty(problem.cohesive)
-    else
-        return false
-    end
-
-end
-
-function addCohesiveConstraint!(problem::AbstractDDProblem{T}, cohesive::AbstractCohesiveZone{T}) where {T<:Real}
-    # Check if problem has cohesive zone
-    if (hasCohesiveZoneConstraint(problem))
-        throw(ErrorException("The problem already has a CohesiveZoneConstraint!"))
-    end
-
-    # Add CohesiveZone
-    push!(problem.cohesive, cohesive)
+    problem.fluid_coupling = pp
 
     return nothing
 end
 
 function reinit!(problem::AbstractDDProblem{T}) where {T<:Real}
     # Normal DD and stress
-    if hasNormalDD(problem)
-        problem.ϵ.value_old = copy(problem.ϵ.value)
+    if hasproperty(problem, :w)
+        problem.w.value_old = copy(problem.w.value)
+    end
+    if hasproperty(problem, :σ)
         problem.σ.value_old = copy(problem.σ.value)
     end
-    # Shear DD 2D
-    if hasShearDD2D(problem)
+    # Shear DD and stress
+    if hasproperty(problem, :δ)
         problem.δ.value_old = copy(problem.δ.value)
-        problem.τ.value_old = copy(problem.τ.value)
     end
-    # Shear DD 3D
-    if hasShearDD3D(problem)
-        problem.δ_x.value_old = copy(problem.δ_x.value)
-        problem.δ_y.value_old = copy(problem.δ_y.value)
-        problem.τ_x.value_old = copy(problem.τ_x.value)
-        problem.τ_y.value_old = copy(problem.τ_y.value)
+    if hasproperty(problem, :τ)
+        problem.τ.value_old = copy(problem.τ.value)
     end
     # Fluid coupling
     if hasFluidCoupling(problem)
-        problem.fluid_coupling[1].p_old = copy(problem.fluid_coupling[1].p)
+        problem.fluid_coupling.p_old = copy(problem.fluid_coupling.p)
     end
     return nothing
 end

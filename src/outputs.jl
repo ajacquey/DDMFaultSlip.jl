@@ -70,26 +70,43 @@ end
 
 function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time::T, dt::T, time_step::Int) where {T<:Real}
     vtk = vtk_grid(string(out.filename_base, "_", string(time_step)), out.vtk_points, out.vtk_cells; append=true, ascii=false, compress=true)
-    if hasNormalDD(problem)
-        vtk["epsilon", VTKCellData()] = problem.ϵ.value
-        vtk["sigma", VTKCellData()] = problem.σ.value
+    if hasproperty(problem, :w)
+        vtk["w", VTKCellData()] = problem.w.value
         if (dt != 0.0)
-            vtk["epsilon_dot", VTKCellData()] = (problem.ϵ.value - problem.ϵ.value_old) / dt
+            vtk["w_dot", VTKCellData()] = (problem.w.value - problem.w.value_old) / dt
         else
-            vtk["epsilon_dot", VTKCellData()] = zeros(T, length(problem.ϵ.value))
+            vtk["w_dot", VTKCellData()] = zeros(T, problem.n)
         end
     end
-    if hasShearDD3D(problem)
-        vtk["delta", VTKCellData()] = cat(problem.δ_x.value, problem.δ_y.value; dims=2)'
-        vtk["tau", VTKCellData()] = cat(problem.τ_x.value, problem.τ_y.value; dims=2)'
-        if (dt != 0.0)
-            vtk["delta_dot", VTKCellData()] = cat((problem.δ_x.value - problem.δ_x.value_old) / dt, (problem.δ_y.value - problem.δ_y.value_old) / dt; dims=2)'
+    if hasproperty(problem, :σ)
+        vtk["sigma", VTKCellData()] = problem.σ.value
+    end
+    if hasproperty(problem, :δ)
+        if (problem.n_dof == problem.n)
+            vtk["delta", VTKCellData()] = problem.δ.value
+            if (dt != 0.0)
+                vtk["delta_dot", VTKCellData()] = (problem.δ.value - problem.δ.value_old) / dt
+            else
+                vtk["delta_dot", VTKCellData()] = zeros(T, problem.n)
+            end
         else
-            vtk["delta_dot", VTKCellData()] = zeros(T, 2, length(problem.δ_x.value))
+            vtk["delta", VTKCellData()] = reshape(problem.δ.value, (problem.n, 2))'
+            if (dt != 0.0)
+                vtk["delta_dot", VTKCellData()] = reshape((problem.δ.value - problem.δ.value_old) / dt, (problem.n, 2))'
+            else
+                vtk["delta_dot", VTKCellData()] = zeros(T, 2, problem.n)
+            end
         end
+    end
+    if hasproperty(problem, :τ)
+        if (problem.n_dof == problem.n)
+            vtk["tau", VTKCellData()] = problem.τ.value
+        else
+            vtk["tau", VTKCellData()] = reshape(problem.τ.value, (problem.n, 2))'
+        end 
     end
     if hasFluidCoupling(problem)
-        vtk["p", VTKCellData()] = problem.fluid_coupling[1].p
+        vtk["p", VTKCellData()] = problem.fluid_coupling.p
     end
     vtk["element_id", VTKCellData()] = collect(1:length(out.vtk_cells))
     vtk["node_id", VTKPointData()] = collect(1:size(out.vtk_points, 2))
@@ -162,23 +179,23 @@ struct CSVDomainOutput{T<:Real} <: AbstractOutput
 end
 
 function addDataToCSV!(data::Matrix{T}, header::String, problem::AbstractDDProblem{T}, dt::T) where {T<:Real}
-    if hasNormalDD(problem)
-        data = hcat(data, problem.ϵ.value)
-        header = string(header, ",epsilon")
+    if hasproperty(problem, :w)
+        data = hcat(data, problem.w.value)
+        header = string(header, ",w")
+        if (dt != 0.0)
+            data = hcat(data, (problem.w.value - problem.w.value_old) / dt)
+        else
+            data = hcat(data, zeros(T, length(problem.w.value)))
+        end
+        header = string(header, ",w_dot")
+    end
+    if hasproperty(problem, :σ)
         data = hcat(data, problem.σ.value)
         header = string(header, ",sigma")
-        if (dt != 0.0)
-            data = hcat(data, (problem.ϵ.value - problem.ϵ.value_old) / dt)
-        else
-            data = hcat(data, zeros(T, length(problem.ϵ.value)))
-        end
-        header = string(header, ",epsilon_dot")
     end
-    if hasShearDD2D(problem)
+    if hasproperty(problem, :δ)
         data = hcat(data, problem.δ.value)
         header = string(header, ",delta")
-        data = hcat(data, problem.τ.value)
-        header = string(header, ",tau")
         if (dt != 0.0)
             data = hcat(data, (problem.δ.value - problem.δ.value_old) / dt)
         else
@@ -186,8 +203,12 @@ function addDataToCSV!(data::Matrix{T}, header::String, problem::AbstractDDProbl
         end
         header = string(header, ",delta_dot")
     end
+    if hasproperty(problem, :τ)
+        data = hcat(data, problem.τ.value)
+        header = string(header, ",tau")
+    end
     if hasFluidCoupling(problem)
-        data = hcat(data, problem.fluid_coupling[1].p)
+        data = hcat(data, problem.fluid_coupling.p)
         header = string(header, ",p")
     end
     header = string(header, "\n")
@@ -252,23 +273,26 @@ struct CSVMaximumOutput <: AbstractOutput
 end
 
 function addHeaderToMaxCSV!(header::String, problem::AbstractDDProblem{T}) where {T<:Real}
-    if hasNormalDD(problem)
-        header = string(header, ",epsilon")
+    if hasproperty(problem, :w)
+        header = string(header, ",w")
+        header = string(header, ",w_dot")
+    end
+    if hasproperty(problem, :σ)
         header = string(header, ",sigma")
-        header = string(header, ",epsilon_dot")
     end
-    if hasShearDD2D(problem)
-        header = string(header, ",delta")
-        header = string(header, ",tau")
-        header = string(header, ",delta_dot")
-    end
-    if hasShearDD3D(problem)
-        header = string(header, ",delta_x")
-        header = string(header, ",delta_y")
-        header = string(header, ",tau_x")
-        header = string(header, ",tau_y")
-        header = string(header, ",delta_x_dot")
-        header = string(header, ",delta_y_dot")
+    if hasproperty(problem, :δ)
+        if (problem.n == problem.n_dof)
+            header = string(header, ",delta")
+            header = string(header, ",tau")
+            header = string(header, ",delta_dot")
+        else
+            header = string(header, ",delta_x")
+            header = string(header, ",delta_y")
+            header = string(header, ",tau_x")
+            header = string(header, ",tau_y")
+            header = string(header, ",delta_x_dot")
+            header = string(header, ",delta_y_dot")
+        end      
     end
     if hasFluidCoupling(problem)
         header = string(header, ",p")
@@ -279,39 +303,42 @@ function addHeaderToMaxCSV!(header::String, problem::AbstractDDProblem{T}) where
 end
 
 function addDataToMaxCSV!(data::T, problem::AbstractDDProblem{T}, dt::T) where {T<:Real}
-    if hasNormalDD(problem)
-        data = hcat(data, maximum(problem.ϵ.value))
+    if hasproperty(problem, :w)
+        data = hcat(data, maximum(problem.w.value))
+        if (dt != 0.0)
+            data = hcat(data, maximum(problem.w.value - problem.w.value_old) / dt)
+        else
+            data = hcat(data, 0.0)
+        end
+    end
+    if hasproperty(problem, :σ)
         data = hcat(data, maximum(problem.σ.value))
-        if (dt != 0.0)
-            data = hcat(data, maximum(problem.ϵ.value - problem.ϵ.value_old) / dt)
-        else
-            data = hcat(data, 0.0)
-        end
     end
-    if hasShearDD2D(problem)
-        data = hcat(data, maximum(problem.δ.value))
-        data = hcat(data, maximum(problem.τ.value))
-        if (dt != 0.0)
-            data = hcat(data, maximum(problem.δ.value - problem.δ.value_old) / dt)
+    if hasproperty(problem, :δ)
+        if (problem.n == problem.n_dof)
+            data = hcat(data, maximum(problem.δ.value))
+            data = hcat(data, maximum(problem.τ.value))
+            if (dt != 0.0)
+                data = hcat(data, maximum(problem.δ.value - problem.δ.value_old) / dt)
+            else
+                data = hcat(data, 0.0)
+            end
         else
-            data = hcat(data, 0.0)
-        end
-    end
-    if hasShearDD3D(problem)
-        data = hcat(data, maximum(problem.δ_x.value))
-        data = hcat(data, maximum(problem.δ_y.value))
-        data = hcat(data, maximum(problem.τ_x.value))
-        data = hcat(data, maximum(problem.τ_y.value))
-        if (dt != 0.0)
-            data = hcat(data, maximum(problem.δ_x.value - problem.δ_x.value_old) / dt)
-            data = hcat(data, maximum(problem.δ_y.value - problem.δ_y.value_old) / dt)
-        else
-            data = hcat(data, 0.0)
-            data = hcat(data, 0.0)
+            data = hcat(data, maximum(problem.δ.value[1:problem.n]))
+            data = hcat(data, maximum(problem.δ.value[problem.n+1:2*problem.n]))
+            data = hcat(data, maximum(problem.τ.value[1:problem.n]))
+            data = hcat(data, maximum(problem.τ.value[problem.n+1:2*problem.n]))
+            if (dt != 0.0)
+                data = hcat(data, maximum(problem.δ.value[1:problem.n] - problem.δ.value_old[1:problem.n]) / dt)
+                data = hcat(data, maximum(problem.δ.value[problem.n+1:2*problem.n] - problem.δ.value_old[problem.n+1:2*problem.n]) / dt)
+            else
+                data = hcat(data, 0.0)
+                data = hcat(data, 0.0)
+            end
         end
     end
     if hasFluidCoupling(problem)
-        data = hcat(data, maximum(problem.fluid_coupling[1].p))
+        data = hcat(data, maximum(problem.fluid_coupling.p))
     end
 
     return data

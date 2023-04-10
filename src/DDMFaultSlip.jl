@@ -1,6 +1,7 @@
 module DDMFaultSlip
 
 using StaticArrays
+using SparseArrays
 using LinearAlgebra
 using Statistics: mean
 using InteractiveUtils
@@ -40,12 +41,12 @@ include("fluid_coupling.jl")
 export FunctionPressure
 
 include("problem.jl")
-export NormalDDProblem, ShearDDProblem2D, ShearDDProblem3D, CoupledDDProblem2D, CoupledDDProblem3D
+export NormalDDProblem, ShearDDProblem
 export addNormalDDIC!, addShearDDIC!, addNormalStressIC!, addShearStressIC!
 export addConstraint!
 export addFrictionConstraint!
+export addCohesiveZoneConstraint!
 export addFluidCoupling!
-export addCohesiveConstraint!
 export addOutput!
 
 include("jacobian.jl")
@@ -64,9 +65,9 @@ export CSVMaximumOutput
 function run!(problem::AbstractDDProblem{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
-    pc::Bool=false, pc_atol::T=1.0e-2,
+    pc::Bool=true, pc_atol::T=1.0e-2,
     nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10,
-    l_solver::String="bicgstabl", l_max_it::Int64=1000, l_abs_tol::T=1.0e-10, l_rel_tol::T=1.0e-10,
+    l_solver::String="gmres", l_max_it::Int64=1000, l_abs_tol::T=1.0e-10, l_rel_tol::T=1.0e-10,
     hmat_eta::T=2.0, hmat_atol::T=1.0e-06) where {T<:Real}
     # Timer
     timer = TimerOutput()
@@ -123,9 +124,9 @@ end
 function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
-    pc::Bool=false, pc_atol::T=1.0e-2,
+    pc::Bool=true, pc_atol::T=1.0e-2,
     nl_max_it::Int64=100, nl_abs_tol::T=1.0e-10, nl_rel_tol::T=1.0e-10,
-    l_solver::String="bicgstabl", l_max_it::Int64=1000, l_abs_tol::T=1.0e-10, l_rel_tol::T=1.0e-10,
+    l_solver::String="gmres", l_max_it::Int64=1000, l_abs_tol::T=1.0e-10, l_rel_tol::T=1.0e-10,
     hmat_eta::T=2.0, hmat_atol::T=1.0e-06, dt_min::T=1.0e-14) where {T<:Real}
     # Timer
     timer = TimerOutput()

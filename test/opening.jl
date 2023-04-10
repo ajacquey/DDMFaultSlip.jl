@@ -8,13 +8,13 @@ function σ_cst(X, time::T) where {T<:Real}
     return -1.0
 end
 
-function ϵ_analytical_2D(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
+function w_analytical_2D(mesh::DDMesh1D{T}, μ::T)::Vector{T} where {T<:Real}
     x = [mesh.elems[i].X[1] for i in 1:length(mesh.elems)]
 
     return sqrt.(1.0 .- x .^ 2) / μ
 end
 
-function ϵ_analytical_3D(mesh::DDMesh2D{T}, μ::T, ν::T)::Vector{T} where {T<:Real}
+function w_analytical_3D(mesh::DDMesh2D{T}, μ::T, ν::T)::Vector{T} where {T<:Real}
     r = [sqrt(mesh.elems[i].X[1]^2 + mesh.elems[i].X[2]^2) for i in 1:length(mesh.elems)]
 
     return 4 * (1 - ν) / (π * μ) * sqrt.(1 .- r .^ 2)
@@ -39,10 +39,10 @@ end
         run!(problem; log=false)
 
         # Analytical solution
-        ϵ_sol = ϵ_analytical_2D(mesh, μ)
+        w_sol = w_analytical_2D(mesh, μ)
 
         # Error less than 2%
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=2.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=2.0e-02)
     end
     @testset "PWC 3D, ν = 0" begin
         # Create mesh
@@ -60,10 +60,10 @@ end
         run!(problem; log=false)
 
         # Analytical solution
-        ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
+        w_sol = w_analytical_3D(mesh, μ, ν)
 
         # Error less than 4%
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=4.0e-02)
     end
     @testset "PWC 3D, ν = 0.25" begin
         # Create mesh
@@ -81,10 +81,10 @@ end
         run!(problem; log=false)
 
         # Analytical solution
-        ϵ_sol = ϵ_analytical_3D(mesh, μ, ν)
+        w_sol = w_analytical_3D(mesh, μ, ν)
 
         # Error less than 4%
-        @test isapprox(problem.ϵ.value, ϵ_sol; rtol=4.0e-02)
+        @test isapprox(problem.w.value, w_sol; rtol=4.0e-02)
     end
 end
 

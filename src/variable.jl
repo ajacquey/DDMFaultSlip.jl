@@ -45,3 +45,7 @@ end
 function default_ic(X::Vector{Point3D{T}}) where {T<:Real}
     return zeros(length(X))
 end
+
+function default_ic(X::Vector{Point3D{T}}, sym::Symbol) where {T<:Real}
+    return zeros(length(X))
+end
