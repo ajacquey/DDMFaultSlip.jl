@@ -1,3 +1,4 @@
+import LinearAlgebra.mul!
 mutable struct DDSolver{R,T<:Real}
     " The jacobian matrix"
     mat::HMatrix{R,T}
@@ -94,7 +95,7 @@ mutable struct DDSolver{R,T<:Real}
         # Compatibility
         comp = PartialACA(; atol=hmat_atol)
         # Assemble H-matrix
-        E = assemble_hmat(K, Xclt, Xclt; adm, comp, threads=false, distributed=false)
+        E = assemble_hmat(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
         mat = E
 
         # Preconditioner
@@ -154,7 +155,7 @@ mutable struct DDSolver{R,T<:Real}
         # Compatibility
         comp = PartialACA(; atol=hmat_atol)
         # Assemble H-matrix
-        E = assemble_hmat(K, Xclt, Xclt; adm, comp, threads=false, distributed=false)
+        E = assemble_hmat(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
         mat = E
 
         # Preconditioner
@@ -176,6 +177,13 @@ mutable struct DDSolver{R,T<:Real}
 end
 
 function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R,T<:Real}
+    # Permutation
+    if ~HMatrices.use_global_index()
+        cperm = HMatrices.colperm(solver.mat) # column permutation
+        rperm = HMatrices.rowperm(solver.mat) # row permutation
+        solver.rhs = solver.rhs[cperm]
+    end
+
     if solver.l_solver == "bicgstabl"
         dx, ch = bicgstabl!(dx, solver.mat, -solver.rhs; Pl=solver.Pc, log=true, abstol=solver.l_abs_tol, reltol=solver.l_rel_tol, max_mv_products=4*solver.l_max_it)
     elseif solver.l_solver == "gmres"
@@ -190,6 +198,11 @@ function linear_solve!(dx::Vector{T}, solver::DDSolver{R,T}, log::Bool) where {R
         else
             @printf("    -> Linear Solve did NOT converge after %i iterations.\n", ch.iters)
         end
+    end
+
+    # Inverse permutation
+    if ~HMatrices.use_global_index()
+        invpermute!(dx,rperm)
     end
 
     return dx
@@ -233,6 +246,7 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
             end
             return true
         end
+
         # Linear Solve
         @timeit timer "Linear solve" dx = linear_solve!(dx, solver, linear_log)
 
@@ -258,6 +272,14 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
         @printf("Solve diverged: exceeded the maximum number of nonlinear iterations!\n")
         return false
     end
+end
+
+" Overwrite mul! function for HMatrix{R,T}"
+function LinearAlgebra.mul!(y::AbstractVector{T}, A::HMatrix{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0) where {R,T<:Real}
+
+    HMatrices.mul!(y, A ,x, a, b; global_index=HMatrices.use_global_index(), threads=false)
+
+    return y
 end
 
 function Base.show(io::IO, solver::DDSolver{R,T}) where {R,T<:Real}

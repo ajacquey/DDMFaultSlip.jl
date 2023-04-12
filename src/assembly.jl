@@ -5,7 +5,7 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
     @timeit timer "Assembly" begin
         # Residuals = collocation stress - imposed stress
         # Collocation stress
-        @timeit timer "Collocation" mul!(solver.rhs, solver.E, solver.solution)
+        @timeit timer "Collocation" mul!(solver.rhs, solver.E, solver.solution; global_index=true)
         # Fluid coupling
         if hasFluidCoupling(problem)
             @timeit timer "Fluid coupling" assembleFluidCouplingResidual!(solver, problem)
@@ -24,7 +24,7 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
         end
 
         # Reassemble HMatrix
-        @timeit timer "H-matrix assembly" solver.mat = assemble_hmat(solver.K, solver.Xclt, solver.Xclt; solver.adm, solver.comp, threads=false, distributed=false)
+        @timeit timer "H-matrix assembly" solver.mat = assemble_hmat(solver.K, solver.Xclt, solver.Xclt; solver.adm, solver.comp, global_index=true, threads=true, distributed=false)
     end
     return nothing
 end
@@ -150,7 +150,7 @@ function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<
     Threads.@threads for idx in eachindex(problem.mesh.elems)
         @inbounds problem.w.value[idx] = problem.w.value_old[idx] + solver.solution[idx]
     end
-    problem.σ.value = problem.σ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution)
+    problem.σ.value = problem.σ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true, threads=false)
     # Fluid coupling
     if hasFluidCoupling(problem)
         problem.σ.value -= problem.fluid_coupling.p + problem.fluid_coupling.p_old
@@ -173,7 +173,7 @@ function update!(problem::ShearDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:
         end
     end
     problem.σ.value = problem.σ.value_old
-    problem.τ.value = problem.τ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution)
+    problem.τ.value = problem.τ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true, threads=false)
     # Fluid coupling
     if hasFluidCoupling(problem)
         problem.σ.value -= problem.fluid_coupling.p - problem.fluid_coupling.p_old

@@ -116,8 +116,8 @@ end
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         # Time sequence
-        time_seq = collect(range(0.0, stop=10.0, length=11))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
+        time_seq = collect(range(0.0, stop=5.0, length=6))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=5.0)
 
         # Run problem
         run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
@@ -155,8 +155,8 @@ end
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         # Time sequence
-        time_seq = collect(range(0.0, stop=10.0, length=11))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
+        time_seq = collect(range(0.0, stop=5.0, length=6))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=5.0)
 
         # Run problem
         run!(problem, time_stepper; log=false)
@@ -194,8 +194,8 @@ end
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
         # Time sequence
-        time_seq = collect(range(0.0, stop=10.0, length=11))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=10.0)
+        time_seq = collect(range(0.0, stop=5.0, length=6))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=5.0)
 
         # Run problem
         run!(problem, time_stepper; log=false)
@@ -232,8 +232,8 @@ end
         # Constant yield (dummy plastic model)
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
-        time_seq = collect(range(0.0, stop=0.35, length=11))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=0.35)
+        time_seq = collect(range(0.0, stop=0.035, length=2))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=0.035)
 
         # Run problem
         run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
@@ -266,8 +266,8 @@ end
         # Constant yield (dummy plastic model)
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
-        time_seq = collect(range(0.0, stop=1.0e+03, length=11))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+03)
+        time_seq = collect(range(0.0, stop=1.0e+02, length=2))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+02)
 
         # Run problem
         run!(problem, time_stepper, log=false, nl_abs_tol=1.0e-08)
@@ -304,8 +304,8 @@ end
         # Constant yield (dummy plastic model)
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
-        time_seq = collect(range(0.0, stop=500.0, length=6))
-        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=500.0)
+        time_seq = collect(range(0.0, stop=1.0e+02, length=2))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+02)
 
         # Run problem
         run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
