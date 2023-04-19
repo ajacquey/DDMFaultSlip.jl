@@ -186,9 +186,9 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
         # Pressure update
         computePressureCoupling!(problem, exec.time, timer)
         # Transient problem
-        converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
+        exec.converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
 
-        if converged
+        if exec.converged
             # Execute outputs
             if ~isempty(outputs)
                 @timeit timer "Execute Outputs" executeOutputs!(outputs, problem, exec, output_initial)
