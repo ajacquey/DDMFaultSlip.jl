@@ -102,9 +102,9 @@ function run!(problem::AbstractDDProblem{T};
     end
 
     # Steady state problem
-    converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
+    exec.converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
 
-    if converged
+    if exec.converged
         # Update "fake" executioner
         advanceTime!(exec)
 
@@ -112,6 +112,8 @@ function run!(problem::AbstractDDProblem{T};
         if ~isempty(outputs)
             @timeit timer "Execute Outputs" executeOutputs!(outputs, problem, exec, output_initial)
         end
+    else
+        throw(ErrorException("Simulation failed!"))
     end
 
     # End of simulation information - TimerOutputs
@@ -155,7 +157,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
     # Transient problem
     exec = TransientExecutioner(time_stepper)
     if log
-        print_TimeStepInfo(exec)
+        printTimeStepInfo(exec)
     end
 
     # Initialize outputs
@@ -163,9 +165,9 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
         @timeit timer "Initialize Outputs" initializeOutputs!(outputs, problem, exec, output_initial)
     end
 
-    converged = true
+    exec.converged = true
     while exec.time < (time_stepper.end_time - time_stepper.tol)
-        if converged
+        if exec.converged
             # Update transient executioner
             advanceTime!(exec, time_stepper)
 
@@ -178,7 +180,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
 
         # Print time step information
         if log
-            print_TimeStepInfo(exec)
+            printTimeStepInfo(exec)
         end
 
         # Pressure update

@@ -1,5 +1,9 @@
 abstract type AbstractTimeStepper{T<:Real} end
 
+function cutBackTimeStep(ts::AbstractTimeStepper{T}, dt::T) where {T<:Real}
+    return ts.cutback_factor * dt
+end
+
 struct ConstantDT{T<:Real} <: AbstractTimeStepper{T}
     " Start time"
     start_time::T
@@ -10,22 +14,32 @@ struct ConstantDT{T<:Real} <: AbstractTimeStepper{T}
     " Time step size"
     dt::T
 
+    " Growth factor after a successful solve"
+    growth_factor::T
+
+    " Cutback factor after a failed solve"
+    cutback_factor::T
+
     " Tolerance"
     tol::T
 
     " Constructor"
-    function ConstantDT(start_time::T, end_time::T, n::Int; tol::T=1.0e-08) where {T<:Real}
+    function ConstantDT(start_time::T, end_time::T, n::Int; growth_factor::T=2.0, cutback_factor::T=0.5, tol::T=1.0e-08) where {T<:Real}
         dt = (end_time - start_time) / n
-        return new{T}(start_time, end_time, dt, tol)
+        return new{T}(start_time, end_time, dt, growth_factor, cutback_factor, tol)
     end
 end
 
-function get_time(ts::ConstantDT{T}, it::Int, t_old::T) where {T<:Real}
-    if (t_old + ts.dt < ts.end_time)
-        return t_old + ts.dt
-    else
-        return ts.end_time
+function getCurrentTimeStep(ts::ConstantDT{T}, t_old::T, dt_old::T, time_step::Int) where {T<:Real}
+    if time_step < 2
+        return ts.dt
     end
+    dt = min(ts.growth_factor * dt_old, ts.dt)
+    if t_old + dt > ts.end_time
+        dt = ts.end_time - t_old
+    end
+
+    return dt
 end
 
 struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
@@ -38,11 +52,14 @@ struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
     " Time sequence"
     time_seq::Vector{T}
 
+    " Cutback factor after a failed solve"
+    cutback_factor::T
+
     " Tolerance"
     tol::T
 
     " Constructor"
-    function TimeSequence(time_seq::Vector{T}; start_time::T=time_seq[1], end_time::T=time_seq[end], tol::T=1.0e-08) where {T<:Real}
+    function TimeSequence(time_seq::Vector{T}; start_time::T=time_seq[1], end_time::T=time_seq[end], cutback_factor::T=0.5, tol::T=1.0e-08) where {T<:Real}
         if (~issorted(time_seq))
             throw(DomainError(time_seq, "Time sequence need to be sorted!"))
         end
@@ -63,10 +80,15 @@ struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
             push!(time_seq, end_time)
         end
 
-        return new{T}(start_time, end_time, time_seq, tol)
+        return new{T}(start_time, end_time, time_seq, cutback_factor, tol)
     end
 end
 
-function get_time(ts::TimeSequence{T}, it::Int, t_old::T) where {T<:Real}
-    return ts.time_seq[it+1]
+function getCurrentTimeStep(ts::TimeSequence{T}, t_old::T, dt_old::T, time_step::Int) where {T<:Real}
+    dt = ts.time_seq[time_step+1] -ts.time_seq[time_step]
+    if t_old + dt > ts.end_time
+        dt = ts.end_time - t_old
+    end
+
+    return dt
 end
