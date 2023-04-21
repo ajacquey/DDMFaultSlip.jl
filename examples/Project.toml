@@ -1,7 +1,11 @@
 [deps]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-DDMFaultSlip = "3c52d001-2359-4feb-abce-7bd6b42a78ca"
+BifurcationKit = "0f109fa4-8a5d-4b75-95aa-f515264e7665"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+GaussChebyshevFracture = "3ef21536-876f-437b-8e16-8b3c2d5a66c3"
 HypergeometricFunctions = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
