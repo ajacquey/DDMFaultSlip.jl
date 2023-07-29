@@ -18,7 +18,7 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
 [compat]
 DelimitedFiles = "1"
-HMatrices = "0.1"
+HMatrices = "0.1, 0.2"
 IterativeSolvers = "0.9"
 StaticArrays = "1"
 TimerOutputs = "0.5"
