@@ -3,13 +3,13 @@ abstract type AbstractFriction end
 struct DefaultFriction <: AbstractFriction
 end
 
-function applyFrictionalConstraints(cst::AbstractFriction, Δδ::T, δ_old::T, σ::T, τ_old::T) where {T<:Real}
+function applyFrictionalConstraints(cst::AbstractFriction, Δδ::T, δ_old::T, σ::T, τ_old::T, Δt::T) where {T<:Real}
     # Plastic DD slip
     Δδᵖ = 0.0
     # Compute trial shear stress
     τ_tr = τ_old + computeTraction(cst, Δδ, Δδᵖ)
     # Pre return map update
-    preReturnMap(cst, δ_old, Δδ)
+    preReturnMap(cst, δ_old, Δδ, Δt)
     
     # Check yield conditions
     y = yieldFunction(cst, σ, τ_tr, 0.0)
@@ -26,7 +26,7 @@ function applyFrictionalConstraints(cst::AbstractFriction, Δδ::T, δ_old::T, �
     end
 end
 
-function applyFrictionalConstraints(cst::AbstractFriction, Δu::SVector{N,T}, u_old::SVector{N,T}, σ::T, t_old::SVector{N,T}) where {N,T<:Real}
+function applyFrictionalConstraints(cst::AbstractFriction, Δu::SVector{N,T}, u_old::SVector{N,T}, σ::T, t_old::SVector{N,T}, Δt::T) where {N,T<:Real}
     # Plastic DD increment
     Δuᵖ = @SVector zeros(T, N)
     # Compute trial tractions
@@ -34,7 +34,7 @@ function applyFrictionalConstraints(cst::AbstractFriction, Δu::SVector{N,T}, u_
     # Compute scalar tractions
     τ_tr = computeScalarTraction(cst, t_tr)
     # Pre return map update
-    preReturnMap(cst, u_old, Δu)
+    preReturnMap(cst, u_old, Δu, Δt)
 
     # Check yield conditions
     y = yieldFunction(cst, σ, τ_tr, 0.0)
@@ -182,11 +182,13 @@ function yieldFunctionStressDerivative(cst::AbstractFriction, σ::T, τ_tr::T, �
     throw(MethodError(yieldFunctionStressDerivative, cst))
 end
 
-function preReturnMap(cst::AbstractFriction, δ_old::T, Δδ::T) where {T<:Real}
+function preReturnMap(cst::AbstractFriction, δ_old::T, Δδ::T, Δt::T) where {T<:Real}
+    cst.Δt = Δt
     return nothing
 end
 
-function preReturnMap(cst::AbstractFriction, u_old::SVector{N,T}, Δu::SVector{N,T}) where {N,T<:Real}
+function preReturnMap(cst::AbstractFriction, u_old::SVector{N,T}, Δu::SVector{N,T}, Δt::T) where {N,T<:Real}
+    cst.Δt = Δt
     return nothing
 end
 
@@ -195,12 +197,18 @@ function postReturnMap(cst::AbstractFriction, Δp::T) where {T<:Real}
 end
 
 # Constant yield model
-struct ConstantYield{T<:Real} <: AbstractFriction
+mutable struct ConstantYield{T<:Real} <: AbstractFriction
     " Shear stress yield"
     τ₀::T
 
     " Shear stiffness"
     k::T
+
+    " Viscosity"
+    η::T
+
+    " Time step size"
+    Δt::T
 
     " Absolute tolerance"
     abs_tol::T
@@ -212,8 +220,8 @@ struct ConstantYield{T<:Real} <: AbstractFriction
     max_iter::Int
 
     " Constructor"
-    function ConstantYield(τ₀::T, k::T; abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
-        return new{T}(τ₀, k, abs_tol, rel_tol, max_iter)
+    function ConstantYield(τ₀::T, k::T; η::T=0.0, abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
+        return new{T}(τ₀, k, η, 0.0, abs_tol, rel_tol, max_iter)
     end
 end
 
@@ -230,12 +238,18 @@ function yieldFunctionStressDerivative(cst::ConstantYield{T}, σ::T, τ_tr::T, �
 end
 
 # Constant friction model
-struct ConstantFriction{T<:Real} <: AbstractFriction
+mutable struct ConstantFriction{T<:Real} <: AbstractFriction
     " Friction coefficient"
     f::T
 
     " Shear stiffness"
     k::T
+
+    " Viscosity"
+    η::T
+
+    " Time step size"
+    Δt::T
 
     " Absolute tolerance"
     abs_tol::T
@@ -247,17 +261,17 @@ struct ConstantFriction{T<:Real} <: AbstractFriction
     max_iter::Int
 
     " Constructor"
-    function ConstantFriction(f::T, k::T; abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
-        return new{T}(f, k, abs_tol, rel_tol, max_iter)
+    function ConstantFriction(f::T, k::T; η::T=0.0, abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
+        return new{T}(f, k, η, 0.0, abs_tol, rel_tol, max_iter)
     end
 end
 
 function yieldFunction(cst::ConstantFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
-    return (τ_tr - cst.k * Δp) - cst.f * σ
+    return (τ_tr - cst.k * Δp) - cst.f * σ - cst.η * Δp / cst.Δt
 end
 
 function yieldFunctionDerivative(cst::ConstantFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
-    return -cst.k
+    return -cst.k - cst.η / cst.Δt
 end
 
 function yieldFunctionStressDerivative(cst::ConstantFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
@@ -288,6 +302,12 @@ mutable struct SlipWeakeningFriction{T<:Real} <: AbstractFriction
     " Shear stiffness"
     k::T
 
+    " Viscosity"
+    η::T
+
+    " Time step size"
+    Δt::T
+
     " Absolute tolerance"
     abs_tol::T
 
@@ -298,8 +318,8 @@ mutable struct SlipWeakeningFriction{T<:Real} <: AbstractFriction
     max_iter::Int
 
     " Constructor"
-    function SlipWeakeningFriction(fₚ::T, fᵣ::T, δᵣ::T, k::T; abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
-        return new{T}(0.0, fₚ, fᵣ, δᵣ, (fₚ - fᵣ) / δᵣ, k, abs_tol, rel_tol, max_iter)
+    function SlipWeakeningFriction(fₚ::T, fᵣ::T, δᵣ::T, k::T; η::T=0.0, abs_tol::T=1.0e-12, rel_tol::T=1.0e-10, max_iter::Int=20) where {T<:Real}
+        return new{T}(0.0, fₚ, fᵣ, δᵣ, (fₚ - fᵣ) / δᵣ, k, η, 0.0, abs_tol, rel_tol, max_iter)
     end
 end
 
@@ -316,20 +336,22 @@ function friction(cst::SlipWeakeningFriction{T}, Δp::T)::T where {T<:Real}
 end
 
 function frictionSlipDerivative(cst::SlipWeakeningFriction{T}, Δp::T)::T where {T<:Real}
-    # Here we use a smooth derivative for convergence
-    k = 50.0 / cst.δᵣ
-    return cst.w * (sigmund(k * (cst.δ_old + Δp - cst.δᵣ)) - 1.0)
+    if (Δp == 0.0)
+        return 0.0
+    else
+        return (friction(cst, Δp) - friction(cst, 0.0)) / Δp
+    end
 end
 
 function yieldFunction(cst::SlipWeakeningFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
     f = friction(cst, Δp)
-    return (τ_tr - cst.k * Δp) - f * σ
+    return (τ_tr - cst.k * Δp) - f * σ - cst.η * Δp / cst.Δt
 end
 
 function yieldFunctionDerivative(cst::SlipWeakeningFriction{T}, σ::T, τ_tr::T, Δp::T)::T where {T<:Real}
     f = friction(cst, Δp)
     df = frictionSlipDerivative(cst, Δp)
-    return -cst.k - df * σ
+    return -cst.k - df * σ - cst.η / cst.Δt
 end
 
 function yieldFunctionStressDerivative(cst::SlipWeakeningFriction{T}, σ_tr::T, τ_tr::T, Δp::T)::T where {T<:Real}
@@ -340,13 +362,15 @@ function reformPlasticDD(cst::SlipWeakeningFriction{T}, Δp::T, t_tr::SVector{2,
     return Δp * plasticFlowDirection(cst, t_tr)
 end
 
-function preReturnMap(cst::SlipWeakeningFriction{T}, δ_old::T, Δδ::T) where {T<:Real}
+function preReturnMap(cst::SlipWeakeningFriction{T}, δ_old::T, Δδ::T, Δt::T) where {T<:Real}
+    cst.Δt = Δt
     # Compute scalar old DD
     cst.δ_old = δ_old
     return nothing
 end
 
-function preReturnMap(cst::SlipWeakeningFriction{T}, u_old::SVector{N,T}, Δu::SVector{N,T}) where {N,T<:Real}
+function preReturnMap(cst::SlipWeakeningFriction{T}, u_old::SVector{N,T}, Δu::SVector{N,T}, Δt::T) where {N,T<:Real}
+    cst.Δt = Δt
     # Compute scalar old DD
     cst.δ_old = computeScalarPlasticDD(cst, u_old)
     return nothing

@@ -1,4 +1,4 @@
-function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput) where {R,T<:Real}
+function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, dt::T, timer::TimerOutput) where {R,T<:Real}
     # Reset local jacobian
     @timeit timer "Reinitialize Solver" reinit!(solver; end_time_step=false)
 
@@ -16,7 +16,7 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
         end
         # Imposed Frictional constraints
         if hasFrictionConstraint(problem)
-            @timeit timer "Frictional constraints" assembleFrictionResidualAndJacobian!(solver, problem)
+            @timeit timer "Frictional constraints" assembleFrictionResidualAndJacobian!(solver, problem, dt)
         end
         # Imposed Cohesive Zone constraints
         if hasCohesiveZoneConstraint(problem)
@@ -24,7 +24,7 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
         end
 
         # Reassemble HMatrix
-        @timeit timer "H-matrix assembly" solver.mat = assemble_hmat(solver.K, solver.Xclt, solver.Xclt; solver.adm, solver.comp, global_index=true, threads=true, distributed=false)
+        @timeit timer "H-matrix assembly" solver.mat = assemble_hmatrix(solver.K, solver.Xclt, solver.Xclt; solver.adm, solver.comp, global_index=true, threads=true, distributed=false)
     end
     return nothing
 end
@@ -83,11 +83,11 @@ end
 
 
 # Frictional constraints
-function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::ShearDDProblem{T}) where {R,T<:Real}
+function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::ShearDDProblem{T}, dt::T) where {R,T<:Real}
     if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric
         # Loop over elements
         Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value_old[idx], problem.σ.value[idx], problem.τ.value_old[idx])
+            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value_old[idx], problem.σ.value[idx], problem.τ.value_old[idx], dt)
             
             @inbounds solver.rhs[idx] -= Res
             @inbounds solver.mat_loc[1,1][idx] = -Jac
@@ -95,7 +95,7 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Sh
     else
         # Loop over elements
         Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]))
+            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]), dt)
 
             @inbounds solver.rhs[idx] -= Res[1]
             @inbounds solver.rhs[problem.n+idx] -= Res[2]

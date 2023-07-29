@@ -102,7 +102,7 @@ function run!(problem::AbstractDDProblem{T};
     end
 
     # Steady state problem
-    exec.converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
+    exec.converged = solve!(solver, problem, 0.0, timer; log=log, linear_log=linear_log)
 
     if exec.converged
         # Update "fake" executioner
@@ -186,7 +186,7 @@ function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T
         # Pressure update
         computePressureCoupling!(problem, exec.time, timer)
         # Transient problem
-        exec.converged = solve!(solver, problem, timer; log=log, linear_log=linear_log)
+        exec.converged = solve!(solver, problem, exec.dt, timer; log=log, linear_log=linear_log)
 
         if exec.converged
             # Execute outputs

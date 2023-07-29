@@ -95,7 +95,7 @@ mutable struct DDSolver{R,T<:Real}
         # Compatibility
         comp = PartialACA(; atol=hmat_atol)
         # Assemble H-matrix
-        E = assemble_hmat(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
+        E = assemble_hmatrix(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
         mat = E
 
         # Preconditioner
@@ -155,7 +155,7 @@ mutable struct DDSolver{R,T<:Real}
         # Compatibility
         comp = PartialACA(; atol=hmat_atol)
         # Assemble H-matrix
-        E = assemble_hmat(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
+        E = assemble_hmatrix(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
         mat = E
 
         # Preconditioner
@@ -214,14 +214,14 @@ function print_NL_res(it::Int, r::T) where {T<:Real}
 end
 
 " Solve the problem using the IterativeSolvers package"
-function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::TimerOutput; log::Bool=true, linear_log::Bool=false)::Bool where {R,T<:Real}
+function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, dt::T, timer::TimerOutput; log::Bool=true, linear_log::Bool=false)::Bool where {R,T<:Real}
     ##### Newton loop #####
     # Non-linear iterations
     nl_iter = 0
     # Declare solution
     dx = zeros(T, length(solver.rhs))
     # Initial residual
-    assembleResidualAndJacobian!(solver, problem, timer)
+    assembleResidualAndJacobian!(solver, problem, dt, timer)
     r = norm(solver.rhs)
     r0 = r
     # Preconditioner
@@ -233,6 +233,26 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
     end
     # Main loop
     while (nl_iter <= solver.nl_max_it)
+        # Linear Solve
+        @timeit timer "Linear solve" dx = linear_solve!(dx, solver, linear_log)
+
+        # Update solution
+        solver.solution .+= dx
+        # Update problem
+        @timeit timer "Update problem" update!(problem, solver)
+        # Update residuals and jacobian
+        assembleResidualAndJacobian!(solver, problem, dt, timer)
+        r = norm(solver.rhs)
+        # Preconditioner
+        if (solver.pc)
+            @timeit timer "Preconditionning" solver.Pc = lu(solver.mat; atol=solver.pc_atol)
+        end
+
+        nl_iter += 1
+        if log
+            print_NL_res(nl_iter, norm(r))
+        end
+
         # Check convergence
         if (r <= solver.nl_abs_tol)
             if log
@@ -245,26 +265,6 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, timer::Tim
                 @printf("Solve converged with relative tolerance!\n")
             end
             return true
-        end
-
-        # Linear Solve
-        @timeit timer "Linear solve" dx = linear_solve!(dx, solver, linear_log)
-
-        # Update solution
-        solver.solution .+= dx
-        # Update problem
-        @timeit timer "Update problem" update!(problem, solver)
-        # Update residuals and jacobian
-        assembleResidualAndJacobian!(solver, problem, timer)
-        r = norm(solver.rhs)
-        # Preconditioner
-        if (solver.pc)
-            @timeit timer "Preconditionning" solver.Pc = lu(solver.mat; atol=solver.pc_atol)
-        end
-
-        nl_iter += 1
-        if log
-            print_NL_res(nl_iter, norm(r))
         end
     end
     # Error if exceeded maximum number of iterations
