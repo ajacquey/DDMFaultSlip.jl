@@ -2,6 +2,7 @@ module DDMFaultSlip
 
 using StaticArrays
 using SparseArrays
+using SpecialFunctions
 using LinearAlgebra
 using Statistics: mean
 using InteractiveUtils
