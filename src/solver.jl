@@ -268,8 +268,10 @@ function solve!(solver::DDSolver{R,T}, problem::AbstractDDProblem{T}, dt::T, tim
         end
     end
     # Error if exceeded maximum number of iterations
-    if (nl_iter > solver.nl_max_it)
-        @printf("Solve diverged: exceeded the maximum number of nonlinear iterations!\n")
+    if (nl_iter > solver.nl_max_it) 
+        if log
+            @printf("Solve diverged: exceeded the maximum number of nonlinear iterations!\n")
+        end
         return false
     end
 end
@@ -277,7 +279,7 @@ end
 " Overwrite mul! function for HMatrix{R,T}"
 function LinearAlgebra.mul!(y::AbstractVector{T}, A::HMatrix{R,T}, x::AbstractVector{T}, a::Number=1, b::Number=0) where {R,T<:Real}
 
-    HMatrices.mul!(y, A ,x, a, b; global_index=HMatrices.use_global_index(), threads=false)
+    HMatrices.mul!(y, A ,x, a, b; global_index=HMatrices.use_global_index(), threads=HMatrices.use_threads())
 
     return y
 end

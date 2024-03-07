@@ -313,7 +313,7 @@ function Base.show(io::IO, problem::AbstractDDProblem{T}) where {T<:Real}
     @printf("\n")
 
     # Paralelism
-    @printf("Paralelism:\n")
+    @printf("Parallelism:\n")
     @printf("  Num threads: %i\n\n", Threads.nthreads())
 
     # Mesh

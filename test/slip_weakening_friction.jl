@@ -68,10 +68,8 @@ end
         # Time stepper
         time_stepper = ConstantDT(t₀, tₑ, nₜ)
 
-        outputs = [CSVDomainOutput(mesh, "outputs/slip-weakening-1"), CSVMaximumOutput("slip-weakening-1")]
-
         # Run problem
-        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-06, nl_max_it=20, outputs=outputs)
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-06, nl_max_it=20)
 
         # Check max slip value
         @test maximum(problem.δ.value) > 0.6 * δw
@@ -105,13 +103,11 @@ end
         # Constant yield (dummy plastic model)
         addFrictionConstraint!(problem, SlipWeakeningFriction(fₚ, fᵣ, δᵣ, k ; η = η))
 
-        outputs = [CSVDomainOutput(mesh, "outputs/slip-weakening-2"), CSVMaximumOutput("slip-weakening-2")]
-
         # Time stepper
         time_stepper = ConstantDT(t₀, tₑ, nₜ)
 
         # Run problem
-        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-06, nl_max_it=20, outputs=outputs)
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-06, nl_max_it=20)
 
         # Check max slip value
         @test maximum(problem.δ.value) > 1.2 * δw
@@ -148,10 +144,8 @@ end
         # Time stepper
         time_stepper = ConstantDT(t₀, tₑ, nₜ)
 
-        outputs = [CSVDomainOutput(mesh, "outputs/slip-weakening-3"), CSVMaximumOutput("slip-weakening-3")]
-
         # Run problem
-        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-06, nl_max_it=20, outputs=outputs)
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-06, nl_max_it=20)
 
         # Check max slip value
         @test maximum(problem.δ.value) > 1.0 * δw

@@ -89,7 +89,7 @@ function lambda_analytical_gs(
     λ = 1.0
     k = 0
     # Create Gauss-Chebyshev quadrature points
-    s, w = gausschebyshev(N, 1)
+    s, w = gausschebyshevt(N)
 
     while (k < max_iters)
         # Update residuals and jacobian
@@ -149,7 +149,7 @@ The function F from Viesca and Garagash (2018)
 """
 function F(u::Float64, λ::Float64, N::Int64)
     # Gauss-Chebyshev quadrature points
-    s, w = gausschebyshev(N, 1)
+    s, w = gausschebyshevt(N)
     return dot(w, dF.(s, u, λ))
 end
 
@@ -160,7 +160,7 @@ Slip evaluated with Gauss-Chebyshev quadrature
 """
 function slip_gs!(δ::Vector{Float64}, x::Vector{Float64}, N::Int64, λ::Float64)
     # Gauss-Chebyshev quadrature points
-    (s, w) = gausschebyshev(N - 1, 2)
+    (s, w) = gausschebyshevu(N - 1)
 
     # Slip weigth from Viesca and Garagash (2018)
     Φ = [0.5 * (sin(k * acos(xi)) / k - sin((k + 2) * acos(xi)) / (k + 2)) for xi in x, k = N:-1:1]
