@@ -140,8 +140,8 @@ mutable struct DDSolver{R,T<:Real}
             Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         else
             if (problem.ν == 0.0)
-                K = DD3DShearAxisSymmetricElasticMatrix(problem.mesh, problem.μ)
-                Kj = DD3DShearAxisSymmetricJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+                K = DD3DShearAxisymmetricElasticMatrix(problem.mesh, problem.μ)
+                Kj = DD3DShearAxisymmetricJacobianMatrix(problem.mesh, mat_loc, problem.μ)
                 Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
             else
                 K = DD3DShearElasticMatrix(problem.mesh, problem.μ, problem.ν)
