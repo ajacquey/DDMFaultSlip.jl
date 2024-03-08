@@ -19,6 +19,9 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " A boolean to specify if the problem is transient"
     transient::Bool
 
+    " Axisymmetric geometry"
+    axisymmetric::Bool
+
     " The normal DD variable"
     w::Variable{T}
 
@@ -37,9 +40,16 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " Pressure coupling"
     fluid_coupling::AbstractFluidCoupling
 
+    " Coordinate system"
+    coord_type::String
+
     " Constructor"
-    function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
-        return new{T}(mesh, μ, ν, length(mesh.elems), length(mesh.elems), transient,
+    function NormalDDProblem(mesh::DDMesh{T}; transient::Bool=false, axisymmetric::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
+        # Check Poisson ratio and axisymmetric geometry
+        if ((ν != 0.0) && (axisymmetric))
+            warn("The Poisson's ratio is set ν ≠ 0 with an axisymmetric geometry. The axisymmetric geometry will be ignored!")
+        end
+        return new{T}(mesh, μ, ν, length(mesh.elems), length(mesh.elems), transient, axisymmetric,
             Variable(T, :w, length(mesh.elems)),
             AuxVariable(T, :σ, length(mesh.elems)),
             DefaultConstraint(),
@@ -69,6 +79,9 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     " A boolean to specify if the problem is transient"
     transient::Bool
 
+    " Axisymmetric geometry"
+    axisymmetric::Bool
+
     " The shear DD variables"
     δ::Variable{T}
 
@@ -91,9 +104,13 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     fluid_coupling::AbstractFluidCoupling
 
     " Constructor"
-    function ShearDDProblem(mesh::DDMesh{T}; transient::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}
+    function ShearDDProblem(mesh::DDMesh{T}; transient::Bool=false, axisymmetric::Bool=false, μ::T=1.0, ν::T=0.0) where {T<:Real}   
         if isa(mesh, DDMesh1D)
-            return new{T}(mesh, μ, ν,  length(mesh.elems), length(mesh.elems), transient,
+            # Check Poisson ratio and axisymmetric geometry
+            if (ν != 0.0)
+                warn("The Poisson's ratio is set ν ≠ 0 on a 1D mesh. Its value will be ignored!")
+            end
+            return new{T}(mesh, μ, ν,  length(mesh.elems), length(mesh.elems), transient, axisymmetric,
                 Variable(T, :δ, length(mesh.elems)),
                 AuxVariable(T, :σ, length(mesh.elems)),
                 AuxVariable(T, :τ, length(mesh.elems)),
@@ -104,7 +121,7 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
             )
         else
             if (ν == 0.0)
-                return new{T}(mesh, μ, ν,  length(mesh.elems), length(mesh.elems), transient,
+                return new{T}(mesh, μ, ν,  length(mesh.elems), length(mesh.elems), transient, axisymmetric,
                     Variable(T, :δ, length(mesh.elems)),
                     AuxVariable(T, :σ, length(mesh.elems)),
                     AuxVariable(T, :τ, length(mesh.elems)),
@@ -114,7 +131,10 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
                     DefaultFluidCoupling(),
                 )
             else
-                return new{T}(mesh, μ, ν,  length(mesh.elems), 2*length(mesh.elems), transient,
+                if (axisymmetric)
+                    warn("The Poisson's ratio is set ν ≠ 0 with an axisymmetric geometry. The axisymmetric geometry will be ignored!")
+                end
+                return new{T}(mesh, μ, ν,  length(mesh.elems), 2*length(mesh.elems), transient, axisymmetric,
                     Variable(T, :δ, 2*length(mesh.elems)),
                     AuxVariable(T, :σ, length(mesh.elems)),
                     AuxVariable(T, :τ, 2*length(mesh.elems)),

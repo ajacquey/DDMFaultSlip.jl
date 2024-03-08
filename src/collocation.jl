@@ -11,10 +11,6 @@ function integralI003(ei::DDTriangleElem{T}, ej::DDTriangleElem{T})::T where {T<
         else
             bp = ej.nodes[1]
         end
-        # ra = ei.X - ap
-        # rb = ei.X - bp
-        # ep = bp - ap
-        # I += 1.0 / (ra[2] * ep[1] - ra[1] * ep[2]) * (F(ep, rb) - F(ep, ra))
         I += 1.0 / ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2]) * (F(bp - ap, ei.X - bp) - F(bp - ap, ei.X - ap))
     end
     return I
@@ -29,10 +25,6 @@ function integralI205(ei::DDTriangleElem{T}, ej::DDTriangleElem{T})::T where {T<
         else
             bp = ej.nodes[1]
         end
-        # ra = ei.X - ap
-        # rb = ei.X - bp
-        # ep = bp - ap
-        # I += (ra[2] * ep[1] - 2.0 * ra[1] * ep[2]) / (3 * (ra[2] * ep[1] - ra[1] * ep[2])^2) * (F(ep, rb) - F(ep, ra)) + ep[1] * ep[2] / (3 * (ra[2] * ep[1] - ra[1] * ep[2])^2) * (F(ra, rb) - F(ra, ra))
         I += ((ei.X - ap)[2] * (bp - ap)[1] - 2.0 * (ei.X - ap)[1] * (bp - ap)[2]) / (3 * ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2])^2) * (F(bp - ap, ei.X - bp) - F(bp - ap, ei.X - ap)) + (bp - ap)[1] * (bp - ap)[2] / (3 * ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2])^2) * (F(ei.X - ap, ei.X - bp) - F(ei.X - ap, ei.X - ap))
     end
     return I
@@ -47,10 +39,6 @@ function integralI025(ei::DDTriangleElem{T}, ej::DDTriangleElem{T})::T where {T<
         else
             bp = ej.nodes[1]
         end
-        # ra = ei.X - ap
-        # rb = ei.X - bp
-        # ep = bp - ap
-        # I += (2.0 * ra[2] * ep[1] - ra[1] * ep[2]) / (3 * (ra[2] * ep[1] - ra[1] * ep[2])^2) * (F(ep, rb) - F(ep, ra)) - ep[1] * ep[2] / (3 * (ra[2] * ep[1] - ra[1] * ep[2])^2) * (F(ra, rb) - F(ra, ra))
         I += (2.0 * (ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2]) / (3 * ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2])^2) * (F(bp - ap, ei.X - bp) - F(bp - ap, ei.X - ap)) - (bp - ap)[1] * (bp - ap)[2] / (3 * ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2])^2) * (F(ei.X - ap, ei.X - bp) - F(ei.X - ap, ei.X - ap))
     end
     return I
@@ -65,16 +53,13 @@ function integralI115(ei::DDTriangleElem{T}, ej::DDTriangleElem{T})::T where {T<
         else
             bp = ej.nodes[1]
         end
-        ra = ei.X - ap
-        rb = ei.X - bp
-        ep = bp - ap
-        I += (ra[1] * ep[1] - ra[2] * ep[2]) / (6 * (ra[2] * ep[1] - ra[1] * ep[2])^2) * (F(ep, rb) - F(ep, ra)) + (ep[2]^2 - ep[1]^2) / (6 * (ra[2] * ep[1] - ra[1] * ep[2])^2) * (F(ra, rb) - F(ra, ra))
+        I += ((ei.X - ap)[1] * (bp - ap)[1] - (ei.X - ap)[2] * (bp - ap)[2]) / (6 * ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2])^2) * (F(bp - ap, ei.X - bp) - F(bp - ap, ei.X - ap)) + ((bp - ap)[2]^2 - (bp - ap)[1]^2) / (6 * ((ei.X - ap)[2] * (bp - ap)[1] - (ei.X - ap)[1] * (bp - ap)[2])^2) * (F(ei.X - ap, ei.X - bp) - F(ei.X - ap, ei.X - ap))
     end
     return I
 end
 
 function m(ri::Point2D{T}, rj::Point2D{T}) where {T<:Real}
-    return 4.0 * norm(ri) * norm(rj) / norm(ri + rj)^2
+    return 4.0 * norm(ri) * norm(rj) / (norm(ri) + norm(rj))^2
 end
 
 abstract type ElasticKernelMatrix{T<:Real} <: AbstractMatrix{T} end
@@ -116,7 +101,7 @@ struct DD3DAxisymmetricElasticMatrix{T<:Real} <: ElasticKernelMatrix{T}
 end
 
 function Base.getindex(K::DD3DAxisymmetricElasticMatrix, i::Int, j::Int)
-    return K.μ / π * ((norm(K.e[j].nodes[2] - K.e[i].X) * ellipe(m(K.e[i].X, K.e[j].nodes[1])) - norm(K.e[j].nodes[1] - K.e[i].X) * ellipe(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2) + (norm(K.e[j].nodes[2] - K.e[i].X) * ellipk(m(K.e[i].X, K.e[j].nodes[1])) - norm(K.e[j].nodes[1] - K.e[i].X) * ellipk(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X + K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2))
+    return K.μ / π * (((norm(K.e[j].nodes[2]) - norm(K.e[i].X)) * ellipe(m(K.e[i].X, K.e[j].nodes[1])) - (norm(K.e[j].nodes[1]) - norm(K.e[i].X)) * ellipe(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2) + ((norm(K.e[j].nodes[2]) + norm(K.e[i].X)) * ellipk(m(K.e[i].X, K.e[j].nodes[1])) - (norm(K.e[j].nodes[1]) + norm(K.e[i].X)) * ellipk(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X + K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2))
 end
 
 function Base.size(K::DD3DAxisymmetricElasticMatrix)
@@ -247,9 +232,9 @@ end
 
 function Base.getindex(K::DD3DAxisymmetricJacobianMatrix, i::Int, j::Int)
     if (i == j)
-        return K.μ / π * ((norm(K.e[j].nodes[2] - K.e[i].X) * ellipe(m(K.e[i].X, K.e[j].nodes[1])) - norm(K.e[j].nodes[1] - K.e[i].X) * ellipe(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2) + (norm(K.e[j].nodes[2] - K.e[i].X) * ellipk(m(K.e[i].X, K.e[j].nodes[1])) - norm(K.e[j].nodes[1] - K.e[i].X) * ellipk(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X + K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2)) + K.mat_loc[1,1][i]
+        return K.μ / π * (((norm(K.e[j].nodes[2]) - norm(K.e[i].X)) * ellipe(m(K.e[i].X, K.e[j].nodes[1])) - (norm(K.e[j].nodes[1]) - norm(K.e[i].X)) * ellipe(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2) + ((norm(K.e[j].nodes[2]) + norm(K.e[i].X)) * ellipk(m(K.e[i].X, K.e[j].nodes[1])) - (norm(K.e[j].nodes[1]) + norm(K.e[i].X)) * ellipk(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X + K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2)) + K.mat_loc[1,1][i]
     else
-        return K.μ / π * ((norm(K.e[j].nodes[2] - K.e[i].X) * ellipe(m(K.e[i].X, K.e[j].nodes[1])) - norm(K.e[j].nodes[1] - K.e[i].X) * ellipe(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2) + (norm(K.e[j].nodes[2] - K.e[i].X) * ellipk(m(K.e[i].X, K.e[j].nodes[1])) - norm(K.e[j].nodes[1] - K.e[i].X) * ellipk(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X + K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2))
+        return K.μ / π * (((norm(K.e[j].nodes[2]) - norm(K.e[i].X)) * ellipe(m(K.e[i].X, K.e[j].nodes[1])) - (norm(K.e[j].nodes[1]) - norm(K.e[i].X)) * ellipe(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X - K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2) + ((norm(K.e[j].nodes[2]) + norm(K.e[i].X)) * ellipk(m(K.e[i].X, K.e[j].nodes[1])) - (norm(K.e[j].nodes[1]) + norm(K.e[i].X)) * ellipk(m(K.e[i].X, K.e[j].nodes[2]))) / (norm(K.e[i].X + K.e[j].X)^2 - norm((K.e[j].nodes[2] - K.e[j].nodes[1]) / 2.0)^2))
     end
 end
 

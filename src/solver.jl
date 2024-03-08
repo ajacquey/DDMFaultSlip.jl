@@ -82,8 +82,13 @@ mutable struct DDSolver{R,T<:Real}
 
         # Assemble collocation matrix
         if isa(problem.mesh, DDMesh1D)
-            K = DD2DElasticMatrix(problem.mesh, problem.μ)
-            Kj = DD2DJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+            if (problem.axisymmetric)
+                K = DD3DAxisymmetricElasticMatrix(problem.mesh, problem.μ)
+                Kj = DD3DAxisymmetricJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+            else
+                K = DD2DElasticMatrix(problem.mesh, problem.μ)
+                Kj = DD2DJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+            end
         elseif isa(problem.mesh, DDMesh2D)
             K = DD3DNormalElasticMatrix(problem.mesh, problem.μ, problem.ν)
             Kj = DD3DNormalJacobianMatrix(problem.mesh, mat_loc, problem.μ, problem.ν)
@@ -95,7 +100,7 @@ mutable struct DDSolver{R,T<:Real}
         # Compatibility
         comp = PartialACA(; atol=hmat_atol)
         # Assemble H-matrix
-        E = assemble_hmatrix(K, Xclt, Xclt; adm, comp, global_index=true, threads=true, distributed=false)
+        E = assemble_hmatrix(K, Xclt, Xclt; adm, comp, global_index=true, threads=false, distributed=false)
         mat = E
 
         # Preconditioner
@@ -134,8 +139,13 @@ mutable struct DDSolver{R,T<:Real}
 
         # Assemble collocation matrix
         if isa(problem.mesh, DDMesh1D)
-            K = DD2DElasticMatrix(problem.mesh, problem.μ)
-            Kj = DD2DJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+            if (problem.axisymmetric)
+                K = DD3DAxisymmetricElasticMatrix(problem.mesh, problem.μ)
+                Kj = DD3DAxisymmetricJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+            else
+                K = DD2DElasticMatrix(problem.mesh, problem.μ)
+                Kj = DD2DJacobianMatrix(problem.mesh, mat_loc, problem.μ)
+            end
             # Cluster tree
             Xclt = ClusterTree([problem.mesh.elems[i].X for i in eachindex(problem.mesh.elems)])
         else
