@@ -29,16 +29,8 @@ function p_func_2D(X::Vector{SVector{2,T}}, time::T)::Vector{T} where {T<:Real}
     return Δp * erfc.([abs(X[idx][1]) for idx in eachindex(X)] / sqrt(α * time))
 end
 
-function p_func_3D(X::Vector{SVector{3,T}}, time::T)::Vector{T} where {T<:Real}
+function p_func_3D(X, time::T)::Vector{T} where {T<:Real}
     return Δpᵢ * expint.(1, [norm(X[idx])^2 for idx in eachindex(X)] / (α * time))
-end
-
-function ϵ_analytical_2D(mesh::DDMesh1D{T}, time::T)::Vector{T} where {T<:Real}
-    return -p_func_2D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
-end
-
-function ϵ_analytical_3D(mesh::DDMesh2D{T}, time::T)::Vector{T} where {T<:Real}
-    return -p_func_3D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
 function δ_analytical_2D(mesh::DDMesh1D{T}, Ts::T, time::T)::Vector{T} where {T<:Real}
@@ -57,7 +49,7 @@ function δ_analytical_2D(mesh::DDMesh1D{T}, Ts::T, time::T)::Vector{T} where {T
     return δ
 end
 
-function δ_analytical_3D(mesh::DDMesh2D{T}, Ts::T, time::T)::Vector{T} where {T<:Real}
+function δ_analytical_3D(mesh::DDMesh{T}, Ts::T, time::T)::Vector{T} where {T<:Real}
     r = [norm(mesh.elems[i].X) for i in 1:length(mesh.elems)]
     δ = zeros(length(r))
 
@@ -85,6 +77,11 @@ end
 # Length of the domain
 function L(Ts)
     x_a, δ_a, λ = injection_analytical_gs(Ts, 500)
+    return 1.1 * λ * sqrt(α * 10.0)
+end
+
+function L_axisymmetric(Ts)
+    r_a, δ_a, λ = injection_analytical_3D(Ts, 500)
     return 1.1 * λ * sqrt(α * 10.0)
 end
 
@@ -278,6 +275,86 @@ end
         # Error less than 4%
         @test isapprox(problem.δ.value, δ_sol; rtol=4.0e-02)
     end
+    @testset "3D axisymmetric: T = 0.01" begin
+        Ts = 0.01
+        function τ₀(X)
+            return f * (σ₀(X) .- Δpᵢ * Ts)
+        end
+
+        function τ₀_y(X)
+            return zeros(length(X))
+        end
+
+        # Create mesh
+        start_point = SVector(0.0, 0.0)
+        end_point = SVector(L_axisymmetric(Ts), 0.0)
+        N = 102
+        mesh = DDMesh1D(start_point, end_point, N)
+
+        # Create problem
+        problem = ShearDDProblem(mesh; axisymmetric=true, μ=μ, ν=ν)
+
+        # ICs
+        addNormalStressIC!(problem, σ₀)
+        addShearStressIC!(problem, τ₀)
+
+        # Fluid coupling
+        addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
+
+        # Constant yield (dummy plastic model)
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
+        
+        # Time sequence
+        time_seq = collect(range(0.0, stop=1.0e+01, length=6))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+01)
+
+        # Run problem
+        run!(problem, time_stepper; log=false, nl_abs_tol=1.0e-08)
+
+        # Analytical solutions
+        δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
+
+        # Error less than 5.0%
+        @test isapprox(problem.δ.value, δ_sol; atol=5.0e-02)
+    end
+    @testset "3D axisymmetric: T = 4.0" begin
+        Ts = 4.0
+        function τ₀(X)
+            return f * (σ₀(X) .- Δpᵢ * Ts)
+        end
+
+        # Create mesh
+        start_point = SVector(0.0, 0.0)
+        end_point = SVector(L_axisymmetric(Ts), 0.0)
+        N = 102
+        mesh = DDMesh1D(start_point, end_point, N)
+
+        # Create problem
+        problem = ShearDDProblem(mesh; axisymmetric=true, μ=μ, ν=ν)
+
+        # ICs
+        addNormalStressIC!(problem, σ₀)
+        addShearStressIC!(problem, τ₀)
+
+        # Fluid coupling
+        addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
+
+        # Constant yield (dummy plastic model)
+        addFrictionConstraint!(problem, ConstantFriction(f, k))
+
+        # Time sequence
+        time_seq = collect(range(0.0, stop=1.0e+01, length=6))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+01)
+
+        # Run problem
+        run!(problem, time_stepper, log=false, nl_abs_tol=1.0e-08)
+
+        # Analytical solutions
+        δ_sol = δ_analytical_3D(mesh, Ts, time_seq[end])
+
+        # Error less than 4%
+        @test isapprox(problem.δ.value, δ_sol; rtol=4.0e-02)
+    end
     @testset "3D: ν=0.2, T = 4.0" begin
         Ts = 4.0
         function τ₀(X, sym)
@@ -304,6 +381,7 @@ end
         # Constant yield (dummy plastic model)
         addFrictionConstraint!(problem, ConstantFriction(f, k))
 
+        # Time sequence
         time_seq = collect(range(0.0, stop=1.0e+02, length=2))
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0e+02)
 

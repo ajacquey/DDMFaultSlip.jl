@@ -75,7 +75,7 @@ function returnMap(cst::AbstractFriction, σ::T, τ_tr::T)::T where {T<:Real}
             return Δp
         end
     end
-    throw(ErrorException("Plastic update failed after $(iter) iterations!"))
+    throw(ErrorException("Plastic update failed after $(cst.max_iter) iterations!"))
 end
 
 # Default traction calculations - 2D

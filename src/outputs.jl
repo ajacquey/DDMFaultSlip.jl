@@ -69,7 +69,7 @@ struct VTKDomainOutput{T<:Real} <: AbstractOutput
 end
 
 function createVTK(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, time::T, dt::T, time_step::Int) where {T<:Real}
-    vtk = vtk_grid(string(out.filename_base, "_", string(time_step)), out.vtk_points, out.vtk_cells; append=true, ascii=false, compress=true)
+    vtk = vtk_grid(string(out.filename_base, "_", string(time_step)), out.vtk_points, out.vtk_cells; append=false, ascii=false, compress=true)
     if hasproperty(problem, :w)
         vtk["w", VTKCellData()] = problem.w.value
         if (dt != 0.0)

@@ -2,6 +2,7 @@ module DDMFaultSlip
 
 using StaticArrays
 using SparseArrays
+using SpecialFunctions
 using LinearAlgebra
 using Statistics: mean
 using InteractiveUtils
@@ -13,7 +14,7 @@ using WriteVTK
 using DelimitedFiles
 
 include("mesh.jl")
-export Point2D, Point3D, DDMesh1D, DDMesh2D
+export Point2D, Point3D, DDMesh, DDMesh1D, DDMesh2D
 
 include("collocation.jl")
 export DD3DShearElasticMatrix

@@ -153,7 +153,7 @@ function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<
     problem.σ.value = problem.σ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true, threads=false)
     # Fluid coupling
     if hasFluidCoupling(problem)
-        problem.σ.value -= problem.fluid_coupling.p + problem.fluid_coupling.p_old
+        problem.σ.value -= problem.fluid_coupling.p - problem.fluid_coupling.p_old
     end
 
     return nothing

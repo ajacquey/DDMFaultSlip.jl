@@ -26,7 +26,7 @@ function p_func_2D(X::Vector{SVector{2,T}}, time::T)::Vector{T} where {T<:Real}
     return Δp * erfc.([abs(X[idx][1]) for idx in eachindex(X)] / sqrt(α * time))
 end
 
-function p_func_3D(X::Vector{SVector{3,T}}, time::T)::Vector{T} where {T<:Real}
+function p_func_3D(X, time::T)::Vector{T} where {T<:Real}
     return Δpᵢ * expint.(1, [norm(X[idx])^2 for idx in eachindex(X)] / (α * time))
 end
 
@@ -34,7 +34,7 @@ function w_analytical_2D(mesh::DDMesh1D{T}, time::T)::Vector{T} where {T<:Real}
     return -p_func_2D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
-function w_analytical_3D(mesh::DDMesh2D{T}, time::T)::Vector{T} where {T<:Real}
+function w_analytical_3D(mesh::DDMesh{T}, time::T)::Vector{T} where {T<:Real}
     return -p_func_3D([mesh.elems[i].X for i in 1:length(mesh.elems)], time) / kₙ
 end
 
@@ -106,6 +106,42 @@ end
         time_seq = collect(range(0.0, stop=1.0, length=11))
         time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0)
 
+        # Run problem
+        run!(problem, time_stepper; log=false)
+
+        # Analytical solutions
+        w_sol = w_analytical_3D(mesh, time_seq[end])
+
+        # Error less than 4%
+        @test isapprox(problem.w.value, w_sol; atol=4.0e-02)
+    end
+    @testset "Fluid-induced opening - 3D axisymmetric" begin
+        # Create mesh
+        start_point = SVector(0.0, 0.0)
+        end_point = SVector(1.0, 0.0)
+        N = 102
+        mesh = DDMesh1D(start_point, end_point, N)
+
+        # Elastic property
+        μ = 1.0
+        ν = 0.0
+
+        # Create problem
+        problem = NormalDDProblem(mesh; μ=μ, ν=ν, axisymmetric=true)
+
+        # ICs
+        addNormalStressIC!(problem, σ₀)
+
+        # Fluid coupling
+        addFluidCoupling!(problem, FunctionPressure(mesh, p_func_3D))
+
+        # Elastic opening
+        addConstraint!(problem, FunctionConstraint(Δσ, dΔσ))
+
+        # Time sequence
+        time_seq = collect(range(0.0, stop=1.0, length=11))
+        time_stepper = TimeSequence(time_seq; start_time=0.0, end_time=1.0)
+        
         # Run problem
         run!(problem, time_stepper; log=false)
 
