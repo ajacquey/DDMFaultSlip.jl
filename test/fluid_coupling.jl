@@ -117,7 +117,7 @@ end
     end
     @testset "Fluid-induced opening - 3D axisymmetric" begin
         # Create mesh
-        start_point = SVector(-1.0, 0.0)
+        start_point = SVector(0.0, 0.0)
         end_point = SVector(1.0, 0.0)
         N = 102
         mesh = DDMesh1D(start_point, end_point, N)
