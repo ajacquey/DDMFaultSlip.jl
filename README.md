@@ -8,7 +8,7 @@
 
 ## Documentation
 
-[![](https://img.shields.io/badge/docs-latest%20release-blue)][https://ajacquey.github.io/DDMFaultSlip.jl/stable/]
+[![](https://img.shields.io/badge/docs-latest%20release-blue)](https://ajacquey.github.io/DDMFaultSlip.jl/stable/)
 
 ## Installation
 
