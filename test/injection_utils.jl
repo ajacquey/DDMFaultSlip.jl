@@ -9,7 +9,7 @@ function stress_parameter_3D(λ::Float64)
 end
 
 function amplification_factor_3D(T::Float64)
-    return abs(fzero(λ->stress_parameter_3D(λ) - T, 1.0))
+    return abs(find_zero(λ->stress_parameter_3D(λ) - T, 1.0))
 end
 
 function low_T_slip_profile_3D(r::Float64, T::Float64)::Float64

@@ -5,7 +5,7 @@ DocMeta.setdocmeta!(DDMFaultSlip, :DocTestSetup, :(using DDMFaultSlip); recursiv
 
 makedocs(;
     modules=[DDMFaultSlip],
-    authors="Antoine Jacquey <antoine.jacquey@tufts.edu> and contributors",
+    authors="Antoine Jacquey <antoine.jacquey@polymtl.ca> and contributors",
     repo="https://github.com/ajacquey/DDMFaultSlip.jl/blob/{commit}{path}#{line}",
     sitename="DDMFaultSlip.jl",
     format=Documenter.HTML(;

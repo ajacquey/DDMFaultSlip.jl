@@ -1,6 +1,6 @@
 name = "DDMFaultSlip"
 uuid = "3c52d001-2359-4feb-abce-7bd6b42a78ca"
-authors = ["Antoine Jacquey <antoine.jacquey@tufts.edu> and contributors"]
+authors = ["Antoine Jacquey <antoine.jacquey@polymtl.ca> and contributors"]
 version = "0.1.0"
 
 [deps]
