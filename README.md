@@ -18,4 +18,7 @@ You can install `DDMFaultSlip` directly from the `Pkg` REPL:
 pkg> add DDMFaultSlip
 ```
 
-## Related packages
+## Related package
+`DDMFaultSlip` relies on the following essential packages:
+* [HMatrices.jl](https://github.com/IntegralEquations/HMatrices.jl): used for hierarchical matrices handling.
+* [IterativeSolvers.jl](https://github.com/JuliaLinearAlgebra/IterativeSolvers.jl): used for solving linear systems.
