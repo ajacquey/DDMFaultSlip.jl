@@ -5,26 +5,25 @@ plt.style.use('publication.mplstyle')
 def plot_figure():
 
     # Read continuation
-    t_cont, delta_cont, ar_cont = np.loadtxt("slip-weakening-friction-cont.csv", delimiter=",", skiprows=1, usecols=[0,1,2], unpack=True)
+    t_cont, delta_cont, ar_cont = np.loadtxt("outputs/slip_weakening_friction_2D_cont_f_0.6_p_0.5_tau_0.55.csv", delimiter=",", skiprows=1, usecols=[0,1,2], unpack=True)
     t_cont = np.insert(t_cont, 0, 0.0, axis=0)
     delta_cont = np.insert(delta_cont, 0, 0.0, axis=0)
     ar_cont = np.insert(ar_cont, 0, 0.0, axis=0)
 
     # Read simulation
-    t, delta, ar = np.loadtxt("slip-weakening-friction-gs.csv", delimiter=",", skiprows=1, usecols=[0,1,2], unpack=True)
-    t = np.insert(t, 0, 0.0, axis=0)
-    delta = np.insert(delta, 0, 0.0, axis=0)
-    ar = np.insert(ar, 0, 0.0, axis=0)
+    t, delta, ar = np.loadtxt("outputs/slip_weakening_friction_2D_f_0.6_p_0.5_tau_0.55.csv", delimiter=",", skiprows=1, usecols=[0,2,4], unpack=True)
 
     # Figure
     fig, axes = plt.subplots(1, 2, figsize=(7, 2.5), constrained_layout=True)
 
     # Plots
-    axes[0].plot(t_cont, ar_cont, color="k")
-    axes[1].plot(t_cont, delta_cont, color="k")
-    axes[0].plot(t, ar, color="xkcd:red")
-    axes[1].plot(t, delta, color="xkcd:red")
+    axes[0].plot(t_cont, ar_cont, color="xkcd:gray")
+    axes[1].plot(t_cont, delta_cont, color="xkcd:gray", label="Continuation")
+    axes[0].plot(np.sqrt(t), ar, color="k")
+    axes[1].plot(np.sqrt(t), delta, color="k", label="DDM results")
 
+    # Legend
+    axes[1].legend(loc="upper left")
     # Limits
     axes[0].set_xlim(left=0, right=15)
     axes[1].set_xlim(left=0, right=15)
