@@ -72,7 +72,7 @@ function main()
 
     ###### MESH ######
     # Create mesh
-    gmsh_command = `gmsh -2 $(@__DIR__)/mesh.geo -setnumber R $(R) -o $(@__DIR__)/mesh-$(T).msh`
+    gmsh_command = `gmsh -2 $(@__DIR__)/../../meshes/mesh.geo -setnumber R $(R) -o $(@__DIR__)/mesh-$(T).msh`
     run(gmsh_command)
     mesh = DDMesh2D(Float64, "mesh-$(T).msh")
 
