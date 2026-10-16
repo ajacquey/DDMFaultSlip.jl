@@ -3,6 +3,8 @@ using StaticArrays
 using SpecialFunctions
 using LinearAlgebra
 using FastGaussQuadrature
+using DelimitedFiles
+using Trapz
 
 ###### PHYSICAL PARAMETERS ######
 const T = parse(Float64, ARGS[1])::Float64
@@ -86,11 +88,71 @@ function fluid_pressure(X, time)
     return erfc.([norm(X[idx]) for idx in eachindex(X)] / sqrt(time))
 end
 
-function main()
+function post_process_injection()
+    # Read maximum file
+    file = string(@__DIR__, "/outputs/constant_friction_2D_T_$(T).csv")
+    # Read data
+    data = readdlm(file, ',')
+    num_columns = size(data, 2)
+    num_lines = size(data, 1) - 1
+    # Declare rupture front
+    Rᵣ = zeros(num_lines)
+    # Declare scalar moment release
+    M₀ = zeros(num_lines)
+    # Loop over time steps
+    Threads.@threads for i in eachindex(Rᵣ)
+        # CSV file with domain output
+        file_t = string(@__DIR__, "/outputs/constant_friction_2D_T_$(T)_values/injection_$(i-1).csv")
+        # Read data
+        data_t = readdlm(file_t, ',', skipstart=1)
+        # Unpack data
+        r = data_t[:,1]
+        σ = data_t[:,3]
+        τ = data_t[:,6]
+        δ = data_t[:,4]
+        # Leading and trailing edge
+        # Index where τ = f * σ (plastic yielding)
+        idx = findall(isapprox.(τ, f * σ; atol=1.0e-03))
+        if length(idx) > 0
+            Rᵣ[i] = r[idx[end]]
+        else
+            Rᵣ[i] = 0.0
+        end
+        M₀[i] = 2 * π * μ * trapz(r, r .* δ)
+    end
+    println("Done computing rupture front!")
+    println()
+    
+    # Create new vectors
+    new_column_1 = Vector{Any}()
+    new_column_2 = Vector{Any}()
+    # Add columns header
+    push!(new_column_1, "R_r")
+    push!(new_column_2, "M_0")
+    # Add leading and trailing edge and moment release data
+    append!(new_column_1, Rᵣ)
+    append!(new_column_2, M₀)
+    if (num_columns == 7) # first time running this script
+        println("Adding new column to file: ", file)
+        # Merge new column with existing data
+        data = hcat(data, new_column_1, new_column_2)
+    else # Rerunning script
+        println("Updating existing column in file: ", file)
+        data[:, end-1] .= new_column_1
+        data[:,end] .= new_column_2
+    end
+    # Write new data to file
+    open(file; write=true) do f
+        writedlm(f, data, ',')
+    end
+    return
+end
+
+function run_injection()
     ###### INITIAL VALUES ######
     τ₀ = -T::Float64 # background shear stress
 
-  ###### INITIAL CONDITIONS FUNCTIONS ######
+    ###### INITIAL CONDITIONS FUNCTIONS ######
     function sigma_ic(X::Vector{SVector{2,Float64}})
         return σ₀ * ones(length(X))
     end
@@ -103,8 +165,8 @@ function main()
     L = computeTDependentLength(T)::Float64 # Length of the domain
 
     ###### MESH ######
-    start_point = SVector(-L / 2.0, 0.0)
-    end_point = SVector(L / 2.0, 0.0)
+    start_point = SVector(-L, 0.0)
+    end_point = SVector(L, 0.0)
     mesh = DDMesh1D(start_point, end_point, n)
 
     ###### PROBLEM ######
@@ -121,14 +183,22 @@ function main()
     addFrictionConstraint!(problem, ConstantFriction(f, μ / h))
 
     ###### OUTPUTS ######
-    outputs = [CSVDomainOutput(mesh, "outputs/injection_values_T_$(T)/injection_T_$(T)"), CSVMaximumOutput("outputs/injection_T_$(T)")]
+    outputs = [CSVDomainOutput(mesh, "outputs/constant_friction_2D_T_$(T)_values/injection"), CSVMaximumOutput("outputs/constant_friction_2D_T_$(T)")]
 
     ###### TIME SEQUENCE ######
     time_seq = round.(collect(exp10.(range(log10(t₀ + dt₀), stop=log10(tₑ), length=nₜ))); digits=6)
     time_stepper = TimeSequence(time_seq; start_time=t₀, end_time=tₑ)
 
     ###### RUN PROBLEM ######
-    run!(problem, time_stepper; outputs = outputs)
+    run!(problem, time_stepper; output_initial = true, outputs = outputs)
+end
+
+function main()
+    # Run simulation
+    run_injection()
+
+    # Post-process results
+    post_process_injection()
 end
 
 main()
