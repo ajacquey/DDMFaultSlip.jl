@@ -65,6 +65,12 @@ export CSVMaximumOutput
 
 # HMatrices.use_global_index() = true
 
+"""
+    run!(problem; kwargs...)
+
+Solve the steady-state (single load step) `problem`. See the transient method
+below for the keyword arguments.
+"""
 function run!(problem::AbstractDDProblem{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,
@@ -126,6 +132,33 @@ function run!(problem::AbstractDDProblem{T};
     return nothing
 end
 
+"""
+    run!(problem, time_stepper; kwargs...)
+
+Solve the transient `problem` over the time steps given by `time_stepper`
+([`ConstantDT`](@ref) or [`TimeSequence`](@ref)). Failed time steps are retried
+with half the time step size.
+
+# Keyword arguments
+- `outputs::Vector{<:AbstractOutput}`: outputs executed after each time step.
+- `output_initial=false`: also execute the outputs for the initial state.
+- `log=true`: print simulation information and nonlinear residuals.
+- `linear_log=false`: print linear solver information.
+- `nl_max_it=100`, `nl_abs_tol=1.0e-10`, `nl_rel_tol=1.0e-10`: maximum number of
+  iterations and tolerances of the Newton solver.
+- `l_solver="idrs"`: linear solver (`"idrs"`, `"gmres"` or `"bicgstabl"`).
+- `l_max_it=1000`, `l_abs_tol=1.0e-10`, `l_rel_tol=1.0e-10`: maximum number of
+  iterations and tolerances of the linear solver.
+- `pc=true`: use a hierarchical LU preconditioner.
+- `pc_atol=1.0e-01`: compression tolerance of the hierarchical LU preconditioner.
+- `pc_refresh_it=10`: recompute the preconditioner when the last linear solve
+  needed more iterations than this.
+- `pc_lin_rtol=1.0e-06`: recompute the preconditioner when the true relative
+  residual of the last linear solve is above this tolerance.
+- `hmat_eta=2.0`, `hmat_atol=1.0e-06`: admissibility parameter and compression
+  tolerance of the hierarchical elastic matrix.
+- `dt_min=1.0e-14`: the simulation fails if the time step is cut below this value.
+"""
 function run!(problem::AbstractDDProblem{T}, time_stepper::AbstractTimeStepper{T};
     outputs::Vector{<:AbstractOutput}=Vector{AbstractOutput}(undef, 0),
     log::Bool=true, linear_log::Bool=false, output_initial::Bool=false,

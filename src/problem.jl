@@ -1,5 +1,14 @@
 abstract type AbstractDDProblem{T<:Real} end
 
+"""
+    NormalDDProblem(mesh::DDMesh{T}; μ=1.0, ν=0.0, axisymmetric=false, transient=false)
+
+Opening (mode I) problem solving for the normal displacement discontinuity `w`
+(field `problem.w`) and the normal stress `σ` (field `problem.σ`) of the elements
+of `mesh`. `μ` is the shear modulus and `ν` the Poisson's ratio of the medium.
+With a [`DDMesh1D`](@ref), `axisymmetric=true` treats the mesh as the radial
+profile of a penny-shaped crack.
+"""
 mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     " The mesh for the problem"
     mesh::DDMesh{T}
@@ -60,6 +69,22 @@ mutable struct NormalDDProblem{T<:Real} <: AbstractDDProblem{T}
     end
 end
 
+"""
+    ShearDDProblem(mesh::DDMesh{T}; μ=1.0, ν=0.0, axisymmetric=false, transient=false)
+
+Shear (fault slip) problem solving for the shear displacement discontinuity (slip)
+`δ` (field `problem.δ`), the shear stress `τ` (field `problem.τ`) and the normal
+stress `σ` (field `problem.σ`) of the elements of `mesh`. `μ` is the shear modulus
+and `ν` the Poisson's ratio of the medium.
+
+- With a [`DDMesh1D`](@ref), the problem is a 2D plane strain problem, or a 3D
+  axisymmetric problem on the radial profile of the fault if `axisymmetric=true`.
+- With a [`DDMesh2D`](@ref) and `ν = 0`, the two slip components decouple and a
+  single slip component (aligned with the shear stress) is solved for.
+- With a [`DDMesh2D`](@ref) and `ν ≠ 0`, the two slip components are solved for:
+  values are stored as `[x-components; y-components]`, and initial conditions and
+  constraints take a direction `:x` or `:y`.
+"""
 mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     " The mesh for the problem"
     mesh::DDMesh{T}
@@ -148,6 +173,12 @@ mutable struct ShearDDProblem{T<:Real} <: AbstractDDProblem{T}
     end
 end
 
+"""
+    addNormalDDIC!(problem, func_ic::Function)
+
+Set the initial normal displacement discontinuity with `func_ic(X)`, returning the
+vector of values at the element centroids `X`.
+"""
 function addNormalDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
     if hasproperty(problem, :w)
         problem.w.func_ic = func_ic
@@ -157,6 +188,13 @@ function addNormalDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where 
     return nothing
 end
 
+"""
+    addShearDDIC!(problem, func_ic::Function)
+
+Set the initial slip with `func_ic(X)` (or `func_ic(X, dir)` with `dir` being `:x`
+or `:y` for a 3D problem with ``ν ≠ 0``), returning the vector of values at the
+element centroids `X`.
+"""
 function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
     if hasproperty(problem, :δ)
         problem.δ.func_ic = func_ic
@@ -166,6 +204,17 @@ function addShearDDIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {
     return nothing
 end
 
+"""
+    addNormalStressIC!(problem, func_ic::Function)
+
+Set the initial normal stress (positive in compression) with `func_ic(X)`,
+returning the vector of values at the element centroids `X`.
+
+# Example
+```julia
+addNormalStressIC!(problem, X -> ones(length(X)))
+```
+"""
 function addNormalStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
     if hasproperty(problem, :σ)
         problem.σ.func_ic = func_ic
@@ -175,6 +224,13 @@ function addNormalStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) wh
     return nothing
 end
 
+"""
+    addShearStressIC!(problem, func_ic::Function)
+
+Set the initial shear stress with `func_ic(X)` (or `func_ic(X, dir)` with `dir`
+being `:x` or `:y` for a 3D problem with ``ν ≠ 0``), returning the vector of values
+at the element centroids `X`.
+"""
 function addShearStressIC!(problem::AbstractDDProblem{T}, func_ic::Function) where {T<:Real}
     if hasproperty(problem, :τ)
         problem.τ.func_ic = func_ic
@@ -230,6 +286,13 @@ function hasConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Real}
     end
 end
 
+"""
+    addConstraint!(problem, cst::AbstractConstraint[, dir::Symbol])
+
+Add a constraint (e.g. a [`FunctionConstraint`](@ref)) to `problem`. For a 3D
+[`ShearDDProblem`](@ref) with ``ν ≠ 0``, `dir` (`:x` or `:y`) gives the slip
+component the constraint applies to.
+"""
 function addConstraint!(problem::NormalDDProblem{T}, cst::AbstractConstraint) where {T<:Real}
     problem.constraints = cst
     return nothing
@@ -261,6 +324,12 @@ function hasFrictionConstraint(problem::AbstractDDProblem{T})::Bool where {T<:Re
     return ~isa(problem.friction, DefaultFriction)
 end
 
+"""
+    addFrictionConstraint!(problem, friction::AbstractFriction)
+
+Add a frictional constraint ([`ConstantFriction`](@ref), [`SlipWeakeningFriction`](@ref)
+or [`ConstantYield`](@ref)) to `problem`. A problem can have only one frictional constraint.
+"""
 function addFrictionConstraint!(problem::AbstractDDProblem{T}, friction::AbstractFriction) where {T<:Real}
     # Check if problem has friction
     if (hasFrictionConstraint(problem))
@@ -277,6 +346,12 @@ function hasCohesiveZoneConstraint(problem::AbstractDDProblem{T})::Bool where {T
     return ~isa(problem.cohesive, DefaultCohesiveZone)
 end
 
+"""
+    addCohesiveZoneConstraint!(problem, cohesive::AbstractCohesiveZone)
+
+Add a cohesive zone constraint (e.g. [`DugdaleCohesiveZone`](@ref)) to `problem`.
+A problem can have only one cohesive zone constraint.
+"""
 function addCohesiveZoneConstraint!(problem::AbstractDDProblem{T}, cohesive::AbstractCohesiveZone) where {T<:Real}
     # Check if problem has cohesive
     if (hasCohesiveZoneConstraint(problem))
@@ -293,6 +368,12 @@ function hasFluidCoupling(problem::AbstractDDProblem{T})::Bool where {T<:Real}
     return ~isa(problem.fluid_coupling, DefaultFluidCoupling)
 end
 
+"""
+    addFluidCoupling!(problem, pp::AbstractFluidCoupling)
+
+Couple `problem` to a pore fluid pressure (e.g. [`FunctionPressure`](@ref)).
+A problem can have only one fluid coupling.
+"""
 function addFluidCoupling!(problem::AbstractDDProblem{T}, pp::AbstractFluidCoupling) where {T<:Real}
     # Check if FluidCoupling is not empty
     if (hasFluidCoupling(problem))
@@ -329,13 +410,13 @@ end
 
 function Base.show(io::IO, problem::AbstractDDProblem{T}) where {T<:Real}
     # Julia information
-    versioninfo()
-    @printf("\n")
+    versioninfo(io)
+    @printf(io, "\n")
 
     # Paralelism
-    @printf("Parallelism:\n")
-    @printf("  Num threads: %i\n\n", Threads.nthreads())
+    @printf(io, "Parallelism:\n")
+    @printf(io, "  Num threads: %i\n\n", Threads.nthreads())
 
     # Mesh
-    show(problem.mesh)
+    show(io, problem.mesh)
 end

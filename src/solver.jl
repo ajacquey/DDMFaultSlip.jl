@@ -34,6 +34,14 @@ function localJacobianMatrix(mat_loc::Matrix{Vector{T}}) where {T<:Real}
     end
 end
 
+"""
+    DDSolver
+
+Nonlinear solver of a DD problem, created by [`run!`](@ref). The elastic
+collocation matrix is assembled once as a hierarchical matrix, and the nonlinear
+system is solved with Newton iterations, using a preconditioned Krylov method for
+the linear systems.
+"""
 mutable struct DDSolver{R,T<:Real}
     " The jacobian operator"
     mat::DDJacobianOperator{R,T}
@@ -363,16 +371,16 @@ end
 
 function Base.show(io::IO, solver::DDSolver{R,T}) where {R,T<:Real}
     # Nonlinear system
-    @printf("Nonlinear system:\n")
-    @printf("  Num DoFs: %i\n", size(solver.E, 1))
-    @printf("  Use threads with HMatrix: ")
-    @printf("%s", HMatrices.use_threads() ? "true\n" : "false\n")
-    @printf("  Use global index with HMatrix: ")
-    @printf("%s", HMatrices.use_global_index() ? "true\n" : "false\n")
-    @printf("  Linear solver: ")
-    @printf("%s\n", solver.l_solver)
-    @printf("  Preconditioner: ")
-    @printf("%s", solver.pc ? "ILU\n\n" : "none\n\n")
+    @printf(io, "Nonlinear system:\n")
+    @printf(io, "  Num DoFs: %i\n", size(solver.E, 1))
+    @printf(io, "  Use threads with HMatrix: ")
+    @printf(io, "%s", HMatrices.use_threads() ? "true\n" : "false\n")
+    @printf(io, "  Use global index with HMatrix: ")
+    @printf(io, "%s", HMatrices.use_global_index() ? "true\n" : "false\n")
+    @printf(io, "  Linear solver: ")
+    @printf(io, "%s\n", solver.l_solver)
+    @printf(io, "  Preconditioner: ")
+    @printf(io, "%s", solver.pc ? "ILU\n\n" : "none\n\n")
 end
 
 function reinitLocalJacobian!(mat_loc::Matrix{Vector{T}}) where {T<:Real}

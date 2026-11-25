@@ -197,6 +197,14 @@ function postReturnMap(cst::AbstractFriction, Δp::T) where {T<:Real}
 end
 
 # Constant yield model
+"""
+    ConstantYield(τ₀::T, k::T; η=0.0, abs_tol=1.0e-12, rel_tol=1.0e-10, max_iter=20)
+
+Frictional constraint with a constant shear strength `τ₀`, independent of the
+normal stress. `k` is the elastic shear stiffness of the fault (typically
+``μ/h`` with ``h`` the fault thickness). See [`ConstantFriction`](@ref) for the
+other arguments.
+"""
 mutable struct ConstantYield{T<:Real} <: AbstractFriction
     " Shear stress yield"
     τ₀::T
@@ -238,6 +246,23 @@ function yieldFunctionStressDerivative(cst::ConstantYield{T}, σ::T, τ_tr::T, �
 end
 
 # Constant friction model
+"""
+    ConstantFriction(f::T, k::T; η=0.0, abs_tol=1.0e-12, rel_tol=1.0e-10, max_iter=20)
+
+Coulomb frictional constraint with constant friction coefficient `f`: slip occurs
+where the shear stress reaches ``f σ'``, with ``σ'`` the effective normal stress.
+
+The fault is modelled as an elasto-(visco)plastic interface of shear stiffness `k`
+(typically ``μ/h`` with ``h`` the fault thickness, large enough to act as a
+penalty): ``τ = τ_{old} + k (Δδ - Δδ^p)`` and the yield condition
+``τ - f σ' - η Δδ^p / Δt ≤ 0`` with `η` an optional viscosity regularizing the slip.
+`abs_tol`, `rel_tol` and `max_iter` control the local return-map iterations.
+
+# Example
+```julia
+addFrictionConstraint!(problem, ConstantFriction(0.6, μ / 1.0e-05))
+```
+"""
 mutable struct ConstantFriction{T<:Real} <: AbstractFriction
     " Friction coefficient"
     f::T
@@ -283,6 +308,14 @@ function reformPlasticDD(cst::ConstantFriction{T}, Δp::T, t_tr::SVector{2,T})::
 end
 
 # Slip-weakening friction model
+"""
+    SlipWeakeningFriction(fₚ::T, fᵣ::T, δᵣ::T, k::T; η=0.0, abs_tol=1.0e-12, rel_tol=1.0e-10, max_iter=20)
+
+Frictional constraint with a linear slip-weakening friction coefficient: the
+friction coefficient decreases from its peak value `fₚ` to its residual value `fᵣ`
+over the slip `δᵣ`, and remains equal to `fᵣ` afterwards. See
+[`ConstantFriction`](@ref) for the other arguments.
+"""
 mutable struct SlipWeakeningFriction{T<:Real} <: AbstractFriction
     " Old value of slip"
     δ_old::T

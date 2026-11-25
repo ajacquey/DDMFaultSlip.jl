@@ -3,6 +3,21 @@ abstract type AbstractFluidCoupling end
 struct DefaultFluidCoupling <: AbstractFluidCoupling
 end
 
+"""
+    FunctionPressure(mesh::DDMesh{T}, fct::Function; fct_ic::Function=default_fc_ic)
+
+Fluid coupling with a pore pressure prescribed by the function `fct(X, time)`,
+which returns the vector of pressures at the element centroids `X` at time `time`.
+The change of pressure reduces the effective normal stress acting on the
+fault (``σ' = σ - p``). `fct_ic(X)` gives the initial pressure (zero by default).
+
+# Example
+```julia
+# Pressure diffusing from a line source at x = 0
+pressure(X, t) = Δp * erfc.([abs(x[1]) for x in X] / sqrt(α * t))
+addFluidCoupling!(problem, FunctionPressure(mesh, pressure))
+```
+"""
 mutable struct FunctionPressure{T<:Real} <: AbstractFluidCoupling
     " Pressure value"
     p::Vector{T}

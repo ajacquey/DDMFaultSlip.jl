@@ -19,6 +19,20 @@ function computeConstraints(cst::DefaultConstraint, Δu::T, X::SVector{3,T})::Tu
     return (0.0, 0.0)
 end
 
+"""
+    FunctionConstraint(func_res::Function[, func_jac::Function])
+
+Constraint imposing a stress change on each element through the function
+`func_res(X, Δu)`, where `X` is the element centroid and `Δu` the increment of
+displacement discontinuity of the element. The optional `func_jac(X, Δu)` returns
+the derivative of `func_res` with respect to `Δu` (zero by default).
+
+# Example
+```julia
+# Uniform tensile stress (stresses are positive in compression)
+addConstraint!(problem, FunctionConstraint((X, Δw) -> -1.0))
+```
+"""
 struct FunctionConstraint <: AbstractConstraint
     " Residual function"
     func_res::Function

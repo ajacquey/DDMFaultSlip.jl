@@ -199,6 +199,15 @@ function postReturnMap(cst::AbstractCohesiveZone, Δp::T) where {T<:Real}
 end
 
 # Dugdale cohesive zone model
+"""
+    DugdaleCohesiveZone(σₚ::T, σᵣ::T, l::T, k::T; abs_tol=1.0e-12, rel_tol=1.0e-10, max_iter=20)
+
+Dugdale cohesive zone constraint for opening problems ([`NormalDDProblem`](@ref)):
+inelastic opening develops when the normal stress reaches the residual strength
+`σᵣ` within a distance `l` of the origin (the open crack), and the peak strength
+`σₚ` elsewhere. `k` is the elastic normal stiffness of the interface (typically
+``μ/h``).
+"""
 struct DugdaleCohesiveZone{T<:Real} <: AbstractCohesiveZone
     " Peak stress"
     σₚ::T

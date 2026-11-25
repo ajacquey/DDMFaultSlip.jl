@@ -4,6 +4,13 @@ function cutBackTimeStep(ts::AbstractTimeStepper{T}, dt::T) where {T<:Real}
     return ts.cutback_factor * dt
 end
 
+"""
+    ConstantDT(start_time::T, end_time::T, n::Int; growth_factor=2.0, cutback_factor=0.5, tol=1.0e-08)
+
+Time stepper with a constant time step size `dt = (end_time - start_time) / n`.
+After a time step was cut back, the time step size grows again by `growth_factor`
+until it reaches `dt`.
+"""
 struct ConstantDT{T<:Real} <: AbstractTimeStepper{T}
     " Start time"
     start_time::T
@@ -42,6 +49,19 @@ function getCurrentTimeStep(ts::ConstantDT{T}, t_old::T, dt_old::T, time_step::I
     return dt
 end
 
+"""
+    TimeSequence(time_seq::Vector{T}; start_time=time_seq[1], end_time=time_seq[end], cutback_factor=0.5, tol=1.0e-08)
+
+Time stepper following the sorted sequence of times `time_seq`. A start time of `0`
+is prepended to the sequence if missing, and `end_time` is appended if it is
+larger than the last time of the sequence.
+
+# Example
+```julia
+# 100 logarithmically spaced time steps between 1e-3 and 1
+time_stepper = TimeSequence(exp10.(range(-3, 0, length=100)); start_time=0.0)
+```
+"""
 struct TimeSequence{T<:Real} <: AbstractTimeStepper{T}
     " Start time"
     start_time::T

@@ -1,4 +1,15 @@
+"""
+    Point2D{T}
+
+Alias for `SVector{2,T}`, a point of a [`DDMesh1D`](@ref).
+"""
 const Point2D{T<:Real} = SVector{2,T}
+
+"""
+    Point3D{T}
+
+Alias for `SVector{3,T}`, a point of a [`DDMesh2D`](@ref).
+"""
 const Point3D{T<:Real} = SVector{3,T}
 
 abstract type DDElem{T<:Real} end
@@ -26,7 +37,16 @@ end
 abstract type DDMesh{T<:Real} end
 
 """
-One-dimensional DDMesh
+    DDMesh1D(start_point::SVector{2,T}, end_point::SVector{2,T}, n::Int)
+
+One-dimensional mesh of `n` uniform edge elements between `start_point` and
+`end_point`. It discretizes a fault or fracture in a 2D medium (plane strain), or
+the radial profile of a penny-shaped crack for axisymmetric problems.
+
+# Example
+```julia
+mesh = DDMesh1D(SVector(-1.0, 0.0), SVector(1.0, 0.0), 100)
+```
 """
 struct DDMesh1D{T<:Real} <: DDMesh{T}
     " List of nodes"
@@ -54,14 +74,26 @@ end
 Custom `show` function for `DDMesh1D{T}` that prints some information.
 """
 function Base.show(io::IO, mesh::DDMesh1D{T} where {T<:Real})
-    @printf("Mesh information:\n")
-    @printf("  Mesh dimension: 1\n")
-    @printf("  Nodes:          %i\n", length(mesh.nodes))
-    @printf("  Elements:       %i\n\n", length(mesh.elems))
+    @printf(io, "Mesh information:\n")
+    @printf(io, "  Mesh dimension: 1\n")
+    @printf(io, "  Nodes:          %i\n", length(mesh.nodes))
+    @printf(io, "  Elements:       %i\n\n", length(mesh.elems))
 end
 
 """
-Two-dimensional DDMesh
+    DDMesh2D(T::DataType, file::String; log::Bool=false)
+
+Two-dimensional triangular mesh of a planar fault or fracture in a 3D medium,
+read from a [Gmsh](https://gmsh.info) mesh `file` in format 4.1 (`gmsh -2 mesh.geo -o mesh.msh`).
+The mesh must lie in the ``z = 0`` plane.
+
+!!! note
+    `file` is resolved relative to the directory of the calling script.
+
+# Example
+```julia
+mesh = DDMesh2D(Float64, "mesh.msh")
+```
 """
 struct DDMesh2D{T<:Real} <: DDMesh{T}
     " List of nodes"
@@ -163,8 +195,8 @@ end
 Custom `show` function for `DDMesh2D{T}` that prints some information.
 """
 function Base.show(io::IO, mesh::DDMesh2D{T} where {T<:Real})
-    @printf("Mesh information:\n")
-    @printf("  Mesh dimension: 2\n")
-    @printf("  Nodes:          %i\n", length(mesh.nodes))
-    @printf("  Elements:       %i\n\n", length(mesh.elems))
+    @printf(io, "Mesh information:\n")
+    @printf(io, "  Mesh dimension: 2\n")
+    @printf(io, "  Nodes:          %i\n", length(mesh.nodes))
+    @printf(io, "  Elements:       %i\n\n", length(mesh.elems))
 end

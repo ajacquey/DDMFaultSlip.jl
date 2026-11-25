@@ -16,6 +16,13 @@ function executeOutputs!(outputs::Vector{<:AbstractOutput}, problem::AbstractDDP
     return nothing
 end
 
+"""
+    VTKDomainOutput(mesh::DDMesh2D, filename::String)
+
+Output of the element values of a 3D problem to VTK files (`filename_<step>.vtu`,
+gathered in `filename.pvd`) for visualization with e.g. ParaView. Relative paths
+are resolved from the directory of the calling script; missing directories are created.
+"""
 struct VTKDomainOutput{T<:Real} <: AbstractOutput
     " Base file name"
     filename_base::String
@@ -135,6 +142,15 @@ function execute!(out::VTKDomainOutput{T}, problem::AbstractDDProblem{T}, exec::
     return nothing
 end
 
+"""
+    CSVDomainOutput(mesh::DDMesh1D, filename::String)
+
+Output of the element values of a 2D problem to one CSV file per time step
+(`filename_<step>.csv`). Columns are the element centroid coordinates `x,y`
+followed by the problem variables (e.g. `sigma,delta,delta_dot,tau,p` for a
+[`ShearDDProblem`](@ref) with fluid coupling). Relative paths are resolved from
+the directory of the calling script; missing directories are created.
+"""
 struct CSVDomainOutput{T<:Real} <: AbstractOutput
     " Base file name"
     filename_base::String
@@ -244,6 +260,13 @@ function execute!(out::CSVDomainOutput{T}, problem::AbstractDDProblem{T}, exec::
     return nothing
 end
 
+"""
+    CSVMaximumOutput(filename::String)
+
+Output of the maximum values of the problem variables over the mesh, one line per
+time step, to the CSV file `filename.csv`. Relative paths are resolved from the
+directory of the calling script; missing directories are created.
+"""
 struct CSVMaximumOutput <: AbstractOutput
     " Base file name"
     filename_base::String
