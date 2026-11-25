@@ -23,8 +23,8 @@ function assembleResidualAndJacobian!(solver::DDSolver{R,T}, problem::AbstractDD
             @timeit timer "Cohesive zone constraints" assembleCohesiveZoneResidualAndJacobian!(solver, problem)
         end
 
-        # Reassemble HMatrix
-        @timeit timer "H-matrix assembly" solver.mat = assemble_hmatrix(solver.K, solver.Xclt, solver.Xclt; solver.adm, solver.comp, global_index=true, threads=true, distributed=false)
+        # Update sparse local jacobian (the collocation H-matrix is unchanged)
+        @timeit timer "Local jacobian" solver.mat.S = localJacobianMatrix(solver.mat_loc)
     end
     return nothing
 end
@@ -87,7 +87,7 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Sh
     if (problem.n == problem.n_dof) # 1D mesh or 2D axis symmetric
         # Loop over elements
         Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value_old[idx], problem.σ.value[idx], problem.τ.value_old[idx], dt)
+            @inbounds (Res, Jac) = applyFrictionalConstraints(localFriction(problem.friction), problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value_old[idx], problem.σ.value[idx], problem.τ.value_old[idx], dt)
             
             @inbounds solver.rhs[idx] -= Res
             @inbounds solver.mat_loc[1,1][idx] = -Jac
@@ -95,7 +95,7 @@ function assembleFrictionResidualAndJacobian!(solver::DDSolver{R,T}, problem::Sh
     else
         # Loop over elements
         Threads.@threads for idx in eachindex(problem.mesh.elems)
-            @inbounds (Res, Jac) = applyFrictionalConstraints(problem.friction, SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]), dt)
+            @inbounds (Res, Jac) = applyFrictionalConstraints(localFriction(problem.friction), SVector(problem.δ.value[idx] - problem.δ.value_old[idx], problem.δ.value[problem.n+idx] - problem.δ.value_old[problem.n+idx]), SVector(problem.δ.value_old[idx], problem.δ.value_old[problem.n+idx]), problem.σ.value[idx], SVector(problem.τ.value_old[idx], problem.τ.value_old[problem.n+idx]), dt)
 
             @inbounds solver.rhs[idx] -= Res[1]
             @inbounds solver.rhs[problem.n+idx] -= Res[2]
@@ -150,7 +150,7 @@ function update!(problem::NormalDDProblem{T}, solver::DDSolver{R,T}) where {R,T<
     Threads.@threads for idx in eachindex(problem.mesh.elems)
         @inbounds problem.w.value[idx] = problem.w.value_old[idx] + solver.solution[idx]
     end
-    problem.σ.value = problem.σ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true, threads=false)
+    problem.σ.value = problem.σ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true)
     # Fluid coupling
     if hasFluidCoupling(problem)
         problem.σ.value -= problem.fluid_coupling.p - problem.fluid_coupling.p_old
@@ -173,7 +173,7 @@ function update!(problem::ShearDDProblem{T}, solver::DDSolver{R,T}) where {R,T<:
         end
     end
     problem.σ.value = problem.σ.value_old
-    problem.τ.value = problem.τ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true, threads=false)
+    problem.τ.value = problem.τ.value_old + mul!(zeros(T, size(solver.solution)), solver.E, solver.solution; global_index=true)
     # Fluid coupling
     if hasFluidCoupling(problem)
         problem.σ.value -= problem.fluid_coupling.p - problem.fluid_coupling.p_old

@@ -379,3 +379,7 @@ end
 function postReturnMap(cst::SlipWeakeningFriction{T}, Δp::T) where {T<:Real}
     return nothing
 end
+
+" Element-local copy of the frictional constraint (needed when the constraint stores element state, for thread safety)"
+localFriction(cst::AbstractFriction) = cst
+localFriction(cst::SlipWeakeningFriction) = deepcopy(cst)
